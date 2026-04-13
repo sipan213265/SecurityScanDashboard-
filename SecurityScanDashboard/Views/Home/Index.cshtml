@@ -1,0 +1,635 @@
+﻿@{
+    ViewData["Title"] = "Security Scan Dashboard";
+}
+
+<div class="container mt-4">
+    <div class="text-center mb-5">
+        <h1 class="display-4"><i class="bi bi-shield-check"></i> Security Scan Dashboard</h1>
+        <p class="lead">Automated SAST and DAST security testing for GitHub repositories</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary mb-3 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Repositories</h6>
+                            <h2 class="mb-0">@ViewBag.TotalRepos</h2>
+                        </div>
+                        <div>
+                            <i class="bi bi-github" style="font-size: 3rem; opacity: 0.5;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Total Scans</h6>
+                            <h2 class="mb-0">@ViewBag.TotalScans</h2>
+                        </div>
+                        <div>
+                            <i class="bi bi-shield-check" style="font-size: 3rem; opacity: 0.5;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Running</h6>
+                            <h2 class="mb-0">@ViewBag.RunningScans</h2>
+                        </div>
+                        <div>
+                            <i class="bi bi-hourglass-split" style="font-size: 3rem; opacity: 0.5;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card text-white bg-danger mb-3 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">Vulnerabilities</h6>
+                            <h2 class="mb-0">@ViewBag.TotalVulnerabilities</h2>
+                        </div>
+                        <div>
+                            <i class="bi bi-exclamation-triangle" style="font-size: 3rem; opacity: 0.5;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Scans -->
+    @if (ViewBag.RunningScansDetails != null && ((IEnumerable<dynamic>)ViewBag.RunningScansDetails).Any())
+    {
+        <div class="alert alert-warning border-warning shadow-sm mb-4" role="alert">
+            <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-hourglass-split me-2" style="font-size: 1.5rem;"></i>
+                <h5 class="mb-0">Active Scans in Progress</h5>
+            </div>
+            
+            @foreach (var scan in ViewBag.RunningScansDetails)
+            {
+                var elapsed = DateTime.UtcNow - scan.StartedAt;
+                var elapsedSeconds = (int)elapsed.TotalSeconds;
+                
+                // Estimate progress based on scan type and elapsed time
+                var estimatedDuration = scan.Type.ToString() == "DAST" ? 45 : 90; // DAST: 45s, SAST: 90s
+                var progressPercent = Math.Min((int)((elapsedSeconds / (double)estimatedDuration) * 100), 95);
+                
+                <div class="card mb-2" style="background-color: rgba(255, 255, 255, 0.8);">
+                    <div class="card-body py-2">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <strong>@scan.Repository.Name</strong>
+                                <br><small class="text-muted">@scan.Type - @scan.ToolName</small>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm text-warning" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small class="d-block mt-1">
+                                        <strong>@(progressPercent)%</strong>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="progress" style="height: 25px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" 
+                                         role="progressbar" 
+                                         style="width: @(progressPercent)%"
+                                         aria-valuenow="@progressPercent" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        <span class="fw-bold">@(progressPercent)% - Scanning...</span>
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="bi bi-clock"></i> Elapsed: @(elapsedSeconds / 60)m @(elapsedSeconds % 60)s
+                                    @if (progressPercent < 95)
+                                    {
+                                        var remaining = (int)((estimatedDuration - elapsedSeconds) > 0 ? (estimatedDuration - elapsedSeconds) : 0);
+                                        <text> | Est. remaining: ~@(remaining)s</text>
+                                    }
+                                </small>
+                            </div>
+                            <div class="col-md-2 text-end">
+                                <a asp-controller="Scan" asp-action="Details" asp-route-id="@scan.Id" 
+                                   class="btn btn-sm btn-outline-warning">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i> Page will auto-refresh every 10 seconds to update scan progress
+            </small>
+        </div>
+    }
+
+    <!-- Vulnerability Breakdown & Charts -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-pie-chart"></i> Vulnerability Distribution
+                </div>
+                <div class="card-body">
+                    <canvas id="vulnerabilityPieChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-bar-chart-fill"></i> Severity Breakdown
+                </div>
+                <div class="card-body">
+                    <canvas id="severityBarChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Timeline -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-graph-up"></i> Scan Activity (Last 7 Days)
+                </div>
+                <div class="card-body">
+                    <canvas id="scanTimelineChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-tools"></i> Security Testing Tools
+                </div>
+                <div class="card-body">
+                    <h6>SAST (Static Application Security Testing)</h6>
+                    <ul>
+                        <li><strong>Semgrep</strong> - Fast pattern-based security scanning</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">DAST (Dynamic Application Security Testing)</h6>
+                    <ul>
+                        <li><strong>Nuclei</strong> - Fast vulnerability scanner with 12,000+ templates</li>
+                    </ul>
+
+                    <div class="mt-4">
+                        <a asp-controller="Repository" asp-action="Index" class="btn btn-primary">
+                            <i class="bi bi-github"></i> Manage Repositories
+                        </a>
+                        <a href="/hangfire" class="btn btn-secondary" target="_blank">
+                            <i class="bi bi-gear"></i> Job Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-bar-chart"></i> Vulnerabilities by Severity
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><span class="badge bg-danger">Critical</span></span>
+                            <strong class="text-danger">@ViewBag.CriticalCount</strong>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-danger" style="width: @(ViewBag.TotalVulnerabilities > 0 ? (ViewBag.CriticalCount * 100.0 / ViewBag.TotalVulnerabilities) : 0)%">
+                                @ViewBag.CriticalCount
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><span class="badge bg-warning text-dark">High</span></span>
+                            <strong class="text-warning">@ViewBag.HighCount</strong>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-warning" style="width: @(ViewBag.TotalVulnerabilities > 0 ? (ViewBag.HighCount * 100.0 / ViewBag.TotalVulnerabilities) : 0)%">
+                                @ViewBag.HighCount
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><span class="badge bg-info">Medium</span></span>
+                            <strong class="text-info">@ViewBag.MediumCount</strong>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-info" style="width: @(ViewBag.TotalVulnerabilities > 0 ? (ViewBag.MediumCount * 100.0 / ViewBag.TotalVulnerabilities) : 0)%">
+                                @ViewBag.MediumCount
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><span class="badge bg-secondary">Low</span></span>
+                            <strong class="text-secondary">@ViewBag.LowCount</strong>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-secondary" style="width: @(ViewBag.TotalVulnerabilities > 0 ? (ViewBag.LowCount * 100.0 / ViewBag.TotalVulnerabilities) : 0)%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Scans -->
+    <div class="card shadow">
+        <div class="card-header bg-dark text-white">
+            <i class="bi bi-clock-history"></i> Recent Scans
+        </div>
+        <div class="card-body">
+            @if (ViewBag.RecentScans == null || !((IEnumerable<dynamic>)ViewBag.RecentScans).Any())
+            {
+                <p class="text-muted">No scans performed yet. <a asp-controller="Repository" asp-action="Index">Add a repository</a> to get started.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table id="recentScansTable" class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Repository</th>
+                                <th>Type</th>
+                                <th>Tool</th>
+                                <th>Status</th>
+                                <th>Vulnerabilities</th>
+                                <th>Started</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var scan in ViewBag.RecentScans)
+                            {
+                                <tr>
+                                    <td><strong>@scan.Repository.Name</strong></td>
+                                    <td>
+                                        <span class="badge bg-@(scan.Type.ToString() == "SAST" ? "primary" : "warning")">
+                                            @scan.Type
+                                        </span>
+                                    </td>
+                                    <td>@scan.ToolName</td>
+                                    <td>
+                                        @if (scan.Status.ToString() == "Completed")
+                                        {
+                                            <span class="badge bg-success">Completed</span>
+                                        }
+                                        else if (scan.Status.ToString() == "Running")
+                                        {
+                                            <span class="badge bg-warning">Running</span>
+                                        }
+                                        else if (scan.Status.ToString() == "Failed")
+                                        {
+                                            <span class="badge bg-danger">Failed</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Pending</span>
+                                        }
+                                    </td>
+                                    <td><span class="badge bg-danger">@scan.Vulnerabilities.Count</span></td>
+                                    <td>@scan.StartedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>
+                                        <a asp-controller="Scan" asp-action="Details" asp-route-id="@scan.Id" class="btn btn-sm btn-info">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Initialize DataTables for Recent Scans
+        $(document).ready(function() {
+            $('#recentScansTable').DataTable({
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+                     '<"row"<"col-sm-12"B>>' +
+                     '<"row"<"col-sm-12"tr>>' +
+                     '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                buttons: [
+                    {
+                        extend: 'copy',
+                        text: '<i class="bi bi-clipboard"></i> Copy',
+                        className: 'btn btn-sm btn-secondary'
+                    },
+                    {
+                        extend: 'csv',
+                        text: '<i class="bi bi-filetype-csv"></i> CSV',
+                        className: 'btn btn-sm btn-success'
+                    },
+                    {
+                        extend: 'excel',
+                        text: '<i class="bi bi-file-earmark-excel"></i> Excel',
+                        className: 'btn btn-sm btn-success'
+                    },
+                    {
+                        extend: 'pdf',
+                        text: '<i class="bi bi-filetype-pdf"></i> PDF',
+                        className: 'btn btn-sm btn-danger'
+                    },
+                    {
+                        extend: 'print',
+                        text: '<i class="bi bi-printer"></i> Print',
+                        className: 'btn btn-sm btn-info'
+                    }
+                ],
+                order: [[5, 'desc']], // Sort by Started date descending
+                pageLength: 5 // Fewer items on dashboard
+            });
+        });
+        
+        // Chart.js configuration
+        const chartColors = {
+            critical: '#dc3545',
+            high: '#ffc107',
+            medium: '#0dcaf0',
+            low: '#6c757d',
+            sast: '#0d6efd',
+            dast: '#fd7e14'
+        };
+
+        // Vulnerability Distribution Pie Chart
+        const vulnPieCtx = document.getElementById('vulnerabilityPieChart').getContext('2d');
+        const vulnerabilityPieChart = new Chart(vulnPieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    data: [@ViewBag.CriticalCount, @ViewBag.HighCount, @ViewBag.MediumCount, @ViewBag.LowCount],
+                    backgroundColor: [
+                        chartColors.critical,
+                        chartColors.high,
+                        chartColors.medium,
+                        chartColors.low
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Total: @ViewBag.TotalVulnerabilities Vulnerabilities',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Severity Breakdown Bar Chart
+        const severityBarCtx = document.getElementById('severityBarChart').getContext('2d');
+        const severityBarChart = new Chart(severityBarCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    label: 'Vulnerabilities',
+                    data: [@ViewBag.CriticalCount, @ViewBag.HighCount, @ViewBag.MediumCount, @ViewBag.LowCount],
+                    backgroundColor: [
+                        chartColors.critical,
+                        chartColors.high,
+                        chartColors.medium,
+                        chartColors.low
+                    ],
+                    borderWidth: 1,
+                    borderColor: [
+                        chartColors.critical,
+                        chartColors.high,
+                        chartColors.medium,
+                        chartColors.low
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: {
+                                size: 11
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 11,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Scan Timeline Chart (Last 7 days)
+        @{
+            var timeline = new Dictionary<string, dynamic>();
+            var last7Days = Enumerable.Range(0, 7).Select(i => DateTime.UtcNow.Date.AddDays(-6 + i)).ToList();
+            
+            foreach (var day in last7Days)
+            {
+                var dayScans = ((IEnumerable<dynamic>)ViewBag.RecentScans ?? new List<dynamic>())
+                    .Where(s => ((DateTime)s.StartedAt).Date == day)
+                    .ToList();
+                
+                timeline[day.ToString("MM/dd")] = new {
+                    total = dayScans.Count,
+                    completed = dayScans.Count(s => s.Status.ToString() == "Completed"),
+                    failed = dayScans.Count(s => s.Status.ToString() == "Failed")
+                };
+            }
+        }
+
+        const scanTimelineCtx = document.getElementById('scanTimelineChart').getContext('2d');
+        const scanTimelineChart = new Chart(scanTimelineCtx, {
+            type: 'line',
+            data: {
+                labels: [@Html.Raw(string.Join(",", timeline.Keys.Select(k => $"'{k}'")))],
+                datasets: [{
+                    label: 'Total Scans',
+                    data: [@Html.Raw(string.Join(",", timeline.Values.Select(v => v.total)))],
+                    borderColor: chartColors.sast,
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }, {
+                    label: 'Completed',
+                    data: [@Html.Raw(string.Join(",", timeline.Values.Select(v => v.completed)))],
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }, {
+                    label: 'Failed',
+                    data: [@Html.Raw(string.Join(",", timeline.Values.Select(v => v.failed)))],
+                    borderColor: chartColors.critical,
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 11
+                            },
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: {
+                            size: 13,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            size: 12
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: {
+                                size: 11
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Auto-refresh page every 10 seconds if there are running scans
+        @if (ViewBag.RunningScansDetails != null && ((IEnumerable<dynamic>)ViewBag.RunningScansDetails).Any())
+        {
+            <text>
+            setTimeout(function() {
+                location.reload();
+            }, 10000); // 10 seconds
+            </text>
+        }
+    </script>
+}
+

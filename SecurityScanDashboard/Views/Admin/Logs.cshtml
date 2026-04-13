@@ -1,0 +1,189 @@
+@{
+    ViewData["Title"] = "Application Logs";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-file-text"></i> Application Logs</h2>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Admin
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-funnel"></i> Filters
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="logFileSelect" class="form-label">Log File</label>
+                        <select id="logFileSelect" class="form-select">
+                            @foreach (var file in ViewBag.LogFiles)
+                            {
+                                <option value="@file">@file</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="logLevelSelect" class="form-label">Log Level</label>
+                        <select id="logLevelSelect" class="form-select">
+                            <option value="">All Levels</option>
+                            <option value="INF">Information</option>
+                            <option value="WRN">Warning</option>
+                            <option value="ERR">Error</option>
+                            <option value="FTL">Fatal</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary w-100" onclick="loadLogs()">
+                        <i class="bi bi-search"></i> Apply Filters
+                    </button>
+
+                    <button class="btn btn-secondary w-100 mt-2" onclick="refreshLogs()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-terminal"></i> Log Entries</span>
+                    <span id="logStats" class="badge bg-light text-dark"></span>
+                </div>
+                <div class="card-body p-0">
+                    <div id="logContainer" style="max-height: 600px; overflow-y: auto; background-color: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px;">
+                        <div class="p-3 text-center text-muted">
+                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                            <p>Select a log file and click "Apply Filters" to view logs</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="pagination">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+
+        function loadLogs(page = 1) {
+            const fileName = document.getElementById('logFileSelect').value;
+            const level = document.getElementById('logLevelSelect').value;
+
+            if (!fileName) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Log File Selected',
+                    text: 'Please select a log file first'
+                });
+                return;
+            }
+
+            fetch(`/Admin/GetLogContent?fileName=${encodeURIComponent(fileName)}&page=${page}&level=${encodeURIComponent(level)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('logContainer');
+                    container.innerHTML = '';
+
+                    if (data.logs.length === 0) {
+                        container.innerHTML = '<div class="p-3 text-center"><p>No log entries found</p></div>';
+                        document.getElementById('logStats').textContent = '0 entries';
+                        return;
+                    }
+
+                    data.logs.forEach(line => {
+                        const logLine = document.createElement('div');
+                        logLine.style.padding = '4px 12px';
+                        logLine.style.borderBottom = '1px solid #333';
+                        logLine.style.whiteSpace = 'pre-wrap';
+                        logLine.style.wordBreak = 'break-all';
+
+                        // Color code by level
+                        if (line.includes('[INF]')) {
+                            logLine.style.color = '#4EC9B0';
+                        } else if (line.includes('[WRN]')) {
+                            logLine.style.color = '#DCDCAA';
+                        } else if (line.includes('[ERR]')) {
+                            logLine.style.color = '#F48771';
+                        } else if (line.includes('[FTL]')) {
+                            logLine.style.color = '#F44747';
+                            logLine.style.fontWeight = 'bold';
+                        }
+
+                        logLine.textContent = line;
+                        container.appendChild(logLine);
+                    });
+
+                    // Update stats
+                    document.getElementById('logStats').textContent = `${data.totalLogs} entries`;
+
+                    // Update pagination
+                    currentPage = data.currentPage;
+                    totalPages = data.totalPages;
+                    updatePagination();
+                })
+                .catch(error => {
+                    console.error('Error loading logs:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to load logs: ' + error.message
+                    });
+                });
+        }
+
+        function updatePagination() {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // Previous button
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadLogs(${currentPage - 1}); return false;">Previous</a>`;
+            pagination.appendChild(prevLi);
+
+            // Page numbers (show max 5)
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const li = document.createElement('li');
+                li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" href="#" onclick="loadLogs(${i}); return false;">${i}</a>`;
+                pagination.appendChild(li);
+            }
+
+            // Next button
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadLogs(${currentPage + 1}); return false;">Next</a>`;
+            pagination.appendChild(nextLi);
+        }
+
+        function refreshLogs() {
+            loadLogs(currentPage);
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshLogs, 30000);
+    </script>
+}

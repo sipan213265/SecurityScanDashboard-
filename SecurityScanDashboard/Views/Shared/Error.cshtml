@@ -1,0 +1,59 @@
+﻿@model ErrorViewModel
+@{
+    ViewData["Title"] = "Hata";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 5rem;"></i>
+                    </div>
+                    <h1 class="text-danger mb-3">Bir Hata Oluştu</h1>
+                    <p class="lead text-muted mb-4">
+                        İsteğiniz işlenirken beklenmeyen bir hata meydana geldi.
+                    </p>
+
+                    @if (Model.ShowRequestId)
+                    {
+                        <div class="alert alert-light border">
+                            <strong>İstek Kimliği:</strong> <code>@Model.RequestId</code>
+                        </div>
+                        <p class="text-muted small">
+                            Bu kimliği destek ekibi ile paylaşabilirsiniz.
+                        </p>
+                    }
+
+                    <div class="mt-4">
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-primary">
+                            <i class="bi bi-house-door"></i> Ana Sayfaya Dön
+                        </a>
+                        <button onclick="history.back()" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Geri Git
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            @if (ViewContext.HttpContext.Request.Host.Host == "localhost" ||
+                 ViewContext.HttpContext.Request.Host.Host == "127.0.0.1")
+            {
+                <div class="card mt-3 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="bi bi-info-circle"></i> Geliştirici Modu
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">
+                            <small>
+                                Daha detaylı hata bilgisi için <strong>appsettings.Development.json</strong> dosyasında 
+                                <code>ASPNETCORE_ENVIRONMENT</code> değişkeninin <code>Development</code> olarak ayarlandığından emin olun.
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

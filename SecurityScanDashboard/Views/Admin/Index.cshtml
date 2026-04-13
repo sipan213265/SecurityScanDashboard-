@@ -1,0 +1,174 @@
+@model dynamic
+
+@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-shield-shaded"></i> Admin Dashboard</h2>
+        <div>
+            <a asp-action="Users" class="btn btn-primary">
+                <i class="bi bi-people"></i> Manage Users
+            </a>
+            <a asp-action="Logs" class="btn btn-warning">
+                <i class="bi bi-file-text"></i> View Logs
+            </a>
+            <a asp-action="SystemInfo" class="btn btn-info">
+                <i class="bi bi-info-circle"></i> System Info
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Users</h6>
+                            <h2 class="mb-0">@Model.TotalUsers</h2>
+                        </div>
+                        <div>
+                            <i class="bi bi-people" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Repositories</h6>
+                            <h2 class="mb-0">@Model.TotalRepositories</h2>
+                        </div>
+                        <div>
+                            <i class="bi bi-github" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Scans</h6>
+                            <h2 class="mb-0">@Model.TotalScans</h2>
+                        </div>
+                        <div>
+                            <i class="bi bi-shield-check" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Vulnerabilities</h6>
+                            <h2 class="mb-0">@Model.TotalVulnerabilities</h2>
+                        </div>
+                        <div>
+                            <i class="bi bi-bug" style="font-size: 3rem; opacity: 0.3;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-hourglass-split"></i> Active Scans
+                </div>
+                <div class="card-body">
+                    <h1 class="display-4">@Model.ActiveScans</h1>
+                    <p class="text-muted">Scans currently running</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-x-circle"></i> Failed Scans
+                </div>
+                <div class="card-body">
+                    <h1 class="display-4">@Model.FailedScans</h1>
+                    <p class="text-muted">Scans that failed to complete</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            <i class="bi bi-gear"></i> Quick Actions
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 col-sm-6">
+                    <a asp-action="Users" class="btn btn-outline-primary btn-lg w-100 mb-3">
+                        <i class="bi bi-people-fill"></i><br>
+                        User Management
+                    </a>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <a asp-action="AllRepositories" class="btn btn-outline-success btn-lg w-100 mb-3">
+                        <i class="bi bi-folder-fill"></i><br>
+                        All Repositories
+                    </a>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <a asp-action="AllScans" class="btn btn-outline-info btn-lg w-100 mb-3">
+                        <i class="bi bi-shield-fill-check"></i><br>
+                        All Scans
+                    </a>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <a asp-action="Logs" class="btn btn-outline-warning btn-lg w-100 mb-3">
+                        <i class="bi bi-file-earmark-text-fill"></i><br>
+                        Application Logs
+                    </a>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3 col-sm-6">
+                    <a asp-action="SystemInfo" class="btn btn-outline-secondary btn-lg w-100 mb-3">
+                        <i class="bi bi-cpu-fill"></i><br>
+                        System Info
+                    </a>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <a asp-action="Settings" class="btn btn-outline-dark btn-lg w-100 mb-3">
+                        <i class="bi bi-gear-fill"></i><br>
+                        Settings
+                    </a>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <a href="/hangfire" target="_blank" class="btn btn-outline-danger btn-lg w-100 mb-3">
+                        <i class="bi bi-calendar-check-fill"></i><br>
+                        Hangfire Dashboard
+                    </a>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-primary btn-lg w-100 mb-3">
+                        <i class="bi bi-house-fill"></i><br>
+                        Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

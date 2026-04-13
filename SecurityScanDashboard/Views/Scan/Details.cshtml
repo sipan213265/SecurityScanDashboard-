@@ -1,0 +1,272 @@
+@model SecurityScanDashboard.Models.Scan
+
+@{
+    ViewData["Title"] = "Scan Details";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-shield-check"></i> Scan Details</h2>
+        <div>
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+            <a asp-controller="Repository" asp-action="Details" asp-route-id="@Model.RepositoryId" class="btn btn-info">
+                <i class="bi bi-github"></i> Repository
+            </a>
+            @if (Model.Status == SecurityScanDashboard.Models.ScanStatus.Completed && Model.Vulnerabilities.Any())
+            {
+                <a asp-action="ExportPdf" asp-route-id="@Model.Id" class="btn btn-danger">
+                    <i class="bi bi-file-pdf"></i> Export PDF
+                </a>
+                <a asp-action="ExportCsv" asp-route-id="@Model.Id" class="btn btn-success">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-info-circle"></i> Scan Information
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Repository:</dt>
+                        <dd class="col-sm-9">
+                            <a asp-controller="Repository" asp-action="Details" asp-route-id="@Model.RepositoryId">
+                                @Model.Repository.Name
+                            </a>
+                        </dd>
+
+                        <dt class="col-sm-3">Type:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge bg-@(Model.Type == SecurityScanDashboard.Models.ScanType.SAST ? "primary" : "warning")">
+                                @Model.Type
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-3">Tool:</dt>
+                        <dd class="col-sm-9">@Model.ToolName</dd>
+
+                        <dt class="col-sm-3">Status:</dt>
+                        <dd class="col-sm-9">
+                            @if (Model.Status == SecurityScanDashboard.Models.ScanStatus.Completed)
+                            {
+                                <span class="badge bg-success">Completed</span>
+                            }
+                            else if (Model.Status == SecurityScanDashboard.Models.ScanStatus.Running)
+                            {
+                                <span class="badge bg-warning">Running</span>
+                            }
+                            else if (Model.Status == SecurityScanDashboard.Models.ScanStatus.Failed)
+                            {
+                                <span class="badge bg-danger">Failed</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Pending</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-3">Started:</dt>
+                        <dd class="col-sm-9">@Model.StartedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                        <dt class="col-sm-3">Completed:</dt>
+                        <dd class="col-sm-9">@(Model.CompletedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</dd>
+
+                        @if (Model.CompletedAt.HasValue)
+                        {
+                            <dt class="col-sm-3">Duration:</dt>
+                            <dd class="col-sm-9">
+                                @((Model.CompletedAt.Value - Model.StartedAt).TotalMinutes.ToString("F1")) minutes
+                            </dd>
+                        }
+
+                        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                        {
+                            <dt class="col-sm-3">Error:</dt>
+                            <dd class="col-sm-9">
+                                <div class="alert alert-danger">@Model.ErrorMessage</div>
+                            </dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-exclamation-triangle"></i> Vulnerabilities (@Model.Vulnerabilities.Count)
+                </div>
+                <div class="card-body">
+                    @if (!Model.Vulnerabilities.Any())
+                    {
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> No vulnerabilities found!
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Severity</th>
+                                        <th>Title</th>
+                                        <th>File</th>
+                                        <th>Line</th>
+                                        <th>CWE/CVE</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var vuln in Model.Vulnerabilities.OrderByDescending(v => v.Severity))
+                                    {
+                                        var severityClass = vuln.Severity switch
+                                        {
+                                            SecurityScanDashboard.Models.SeverityLevel.Critical => "danger",
+                                            SecurityScanDashboard.Models.SeverityLevel.High => "warning",
+                                            SecurityScanDashboard.Models.SeverityLevel.Medium => "info",
+                                            _ => "secondary"
+                                        };
+
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-@severityClass">@vuln.Severity</span>
+                                            </td>
+                                            <td><strong>@vuln.Title</strong></td>
+                                            <td><code>@(vuln.FilePath ?? "-")</code></td>
+                                            <td>@(vuln.LineNumber?.ToString() ?? "-")</td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(vuln.CweId))
+                                                {
+                                                    <span class="badge bg-secondary">@vuln.CweId</span>
+                                                }
+                                                @if (!string.IsNullOrEmpty(vuln.CveId))
+                                                {
+                                                    <span class="badge bg-dark">@vuln.CveId</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#vulnModal@(vuln.Id)">
+                                                    <i class="bi bi-info-circle"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Vulnerability Details Modal -->
+                                        <div class="modal fade" id="vulnModal@(vuln.Id)" tabindex="-1">
+                                            <div class="modal-dialog modal-lg">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">@vuln.Title</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p><strong>Severity:</strong> 
+                                                            <span class="badge bg-@severityClass">@vuln.Severity</span>
+                                                        </p>
+                                                        <p><strong>Description:</strong></p>
+                                                        <p>@(vuln.Description ?? "No description available.")</p>
+                                                        @if (!string.IsNullOrEmpty(vuln.FilePath))
+                                                        {
+                                                            <p><strong>Location:</strong> <code>@vuln.FilePath:@vuln.LineNumber</code></p>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(vuln.CweId) || !string.IsNullOrEmpty(vuln.CveId))
+                                                        {
+                                                            <p><strong>Identifiers:</strong></p>
+                                                            <ul>
+                                                                @if (!string.IsNullOrEmpty(vuln.CweId))
+                                                                {
+                                                                    <li>CWE: @vuln.CweId</li>
+                                                                }
+                                                                @if (!string.IsNullOrEmpty(vuln.CveId))
+                                                                {
+                                                                    <li>CVE: @vuln.CveId</li>
+                                                                }
+                                                            </ul>
+                                                        }
+                                                        <p><strong>Detected:</strong> @vuln.DetectedAt.ToString("yyyy-MM-dd HH:mm:ss")</p>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-bar-chart"></i> Statistics
+                </div>
+                <div class="card-body">
+                    @{
+                        var criticalCount = Model.Vulnerabilities.Count(v => v.Severity == SecurityScanDashboard.Models.SeverityLevel.Critical);
+                        var highCount = Model.Vulnerabilities.Count(v => v.Severity == SecurityScanDashboard.Models.SeverityLevel.High);
+                        var mediumCount = Model.Vulnerabilities.Count(v => v.Severity == SecurityScanDashboard.Models.SeverityLevel.Medium);
+                        var lowCount = Model.Vulnerabilities.Count(v => v.Severity == SecurityScanDashboard.Models.SeverityLevel.Low);
+                    }
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-danger">Critical</span>
+                            <strong class="text-danger">@criticalCount</strong>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-danger" style="width: @(Model.Vulnerabilities.Any() ? (criticalCount * 100.0 / Model.Vulnerabilities.Count) : 0)%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-warning">High</span>
+                            <strong class="text-warning">@highCount</strong>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-warning" style="width: @(Model.Vulnerabilities.Any() ? (highCount * 100.0 / Model.Vulnerabilities.Count) : 0)%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-info">Medium</span>
+                            <strong class="text-info">@mediumCount</strong>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-info" style="width: @(Model.Vulnerabilities.Any() ? (mediumCount * 100.0 / Model.Vulnerabilities.Count) : 0)%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-secondary">Low</span>
+                            <strong class="text-secondary">@lowCount</strong>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-secondary" style="width: @(Model.Vulnerabilities.Any() ? (lowCount * 100.0 / Model.Vulnerabilities.Count) : 0)%"></div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <div class="text-center">
+                        <h3>@Model.Vulnerabilities.Count</h3>
+                        <p class="text-muted">Total Vulnerabilities</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,76 @@
+@model SecurityScanDashboard.Models.Repository
+
+@{
+    ViewData["Title"] = "Add Repository";
+}
+
+<div class="container mt-4">
+    <h2><i class="bi bi-plus-circle"></i> Add New Repository</h2>
+
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                
+                <div class="mb-3">
+                    <label asp-for="Url" class="form-label">Repository URL *</label>
+                    <input asp-for="Url" class="form-control" placeholder="https://github.com/owner/repository" required />
+                    <span asp-validation-for="Url" class="text-danger"></span>
+                    <div class="form-text">Enter the full GitHub repository URL</div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="LiveUrl" class="form-label">Live Application URL</label>
+                    <input asp-for="LiveUrl" class="form-control" placeholder="https://example.com" />
+                    <span asp-validation-for="LiveUrl" class="text-danger"></span>
+                    <div class="form-text">Optional - URL for DAST scanning (e.g., deployed application)</div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Name" class="form-label">Repository Name</label>
+                        <input asp-for="Name" class="form-control" placeholder="repository-name" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                        <div class="form-text">Optional - will be extracted from URL</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Owner" class="form-label">Owner</label>
+                        <input asp-for="Owner" class="form-control" placeholder="owner-name" />
+                        <span asp-validation-for="Owner" class="text-danger"></span>
+                        <div class="form-text">Optional - will be extracted from URL</div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Add Repository
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-info-circle"></i> Information
+                </div>
+                <div class="card-body">
+                    <p><strong>Supported Platforms:</strong></p>
+                    <ul>
+                        <li>GitHub (public repositories)</li>
+                    </ul>
+                    <p class="mt-3"><strong>Example URL:</strong></p>
+                    <code>https://github.com/jerryhoff/WebGoat.NET</code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

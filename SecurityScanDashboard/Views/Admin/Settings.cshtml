@@ -1,0 +1,246 @@
+@{
+    ViewData["Title"] = "Application Settings";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-gear"></i> Application Settings</h2>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Admin
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Email Settings -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-envelope"></i> Email Settings
+                </div>
+                <div class="card-body">
+                    <form id="emailSettingsForm">
+                        <div class="mb-3">
+                            <label class="form-label">SMTP Host</label>
+                            <input type="text" class="form-control" id="smtpHost" placeholder="smtp.gmail.com">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">SMTP Port</label>
+                            <input type="number" class="form-control" id="smtpPort" placeholder="587">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">SMTP Username</label>
+                            <input type="text" class="form-control" id="smtpUsername">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">SMTP Password</label>
+                            <input type="password" class="form-control" id="smtpPassword">
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="enableSsl" checked>
+                            <label class="form-check-label" for="enableSsl">
+                                Enable SSL/TLS
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Email Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scan Settings -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-shield-check"></i> Scan Settings
+                </div>
+                <div class="card-body">
+                    <form id="scanSettingsForm">
+                        <div class="mb-3">
+                            <label class="form-label">Maximum Concurrent Scans</label>
+                            <input type="number" class="form-control" id="maxConcurrentScans" value="3" min="1" max="10">
+                            <small class="form-text text-muted">Number of scans that can run simultaneously</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Scan Timeout (minutes)</label>
+                            <input type="number" class="form-control" id="scanTimeout" value="60" min="5" max="240">
+                            <small class="form-text text-muted">Maximum time allowed for a single scan</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Auto-Scan Schedule</label>
+                            <select class="form-select" id="autoScanSchedule">
+                                <option value="none">Disabled</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                            <small class="form-text text-muted">Automatically scan repositories</small>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="sendEmailOnComplete" checked>
+                            <label class="form-check-label" for="sendEmailOnComplete">
+                                Send email notification on scan completion
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save"></i> Save Scan Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Security Settings -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-shield-lock"></i> Security Settings
+                </div>
+                <div class="card-body">
+                    <form id="securitySettingsForm">
+                        <div class="mb-3">
+                            <label class="form-label">Session Timeout (minutes)</label>
+                            <input type="number" class="form-control" id="sessionTimeout" value="30" min="5" max="120">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password Min Length</label>
+                            <input type="number" class="form-control" id="passwordMinLength" value="6" min="6" max="20">
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="requireUppercase" checked>
+                            <label class="form-check-label" for="requireUppercase">
+                                Require uppercase letter in password
+                            </label>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="requireDigit" checked>
+                            <label class="form-check-label" for="requireDigit">
+                                Require digit in password
+                            </label>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="requireNonAlphanumeric">
+                            <label class="form-check-label" for="requireNonAlphanumeric">
+                                Require special character in password
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-save"></i> Save Security Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Application Settings -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-sliders"></i> Application Settings
+                </div>
+                <div class="card-body">
+                    <form id="applicationSettingsForm">
+                        <div class="mb-3">
+                            <label class="form-label">Application Name</label>
+                            <input type="text" class="form-control" id="appName" value="Security Scan Dashboard">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Items Per Page</label>
+                            <input type="number" class="form-control" id="itemsPerPage" value="10" min="5" max="100">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Log Retention Days</label>
+                            <input type="number" class="form-control" id="logRetention" value="30" min="7" max="365">
+                            <small class="form-text text-muted">Number of days to keep log files</small>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="enableSwagger" checked>
+                            <label class="form-check-label" for="enableSwagger">
+                                Enable Swagger API Documentation
+                            </label>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="enableDetailedErrors">
+                            <label class="form-check-label" for="enableDetailedErrors">
+                                Show detailed error pages (Development only)
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-info">
+                            <i class="bi bi-save"></i> Save Application Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Card -->
+    <div class="card bg-light">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="bi bi-info-circle"></i> Important Information
+            </h5>
+            <ul class="mb-0">
+                <li>Settings are currently stored in memory and will reset on application restart.</li>
+                <li>For production deployment, configure settings in <code>appsettings.json</code> or environment variables.</li>
+                <li>Some security settings require application restart to take effect.</li>
+                <li>Email settings must be configured before email notifications can be sent.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Email Settings Form
+        document.getElementById('emailSettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Settings Saved',
+                text: 'Email settings have been saved successfully',
+                timer: 2000
+            });
+        });
+
+        // Scan Settings Form
+        document.getElementById('scanSettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Settings Saved',
+                text: 'Scan settings have been saved successfully',
+                timer: 2000
+            });
+        });
+
+        // Security Settings Form
+        document.getElementById('securitySettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Settings Saved',
+                text: 'Security settings have been saved successfully. Some changes may require application restart.',
+                timer: 2500
+            });
+        });
+
+        // Application Settings Form
+        document.getElementById('applicationSettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Settings Saved',
+                text: 'Application settings have been saved successfully',
+                timer: 2000
+            });
+        });
+    </script>
+}

@@ -1,0 +1,285 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Security Scan Dashboard</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/dark-mode.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/SecurityScanDashboard.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-dark border-bottom box-shadow mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-shield-check"></i> Security Scanner
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">
+                                <i class="bi bi-house"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Repository" asp-action="Index">
+                                <i class="bi bi-github"></i> Repositories
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Scan" asp-action="Index">
+                                <i class="bi bi-shield-check"></i> Scans
+                            </a>
+                        </li>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">
+                                    <i class="bi bi-shield-lock"></i> Admin
+                                </a>
+                            </li>
+                        }
+                        <li class="nav-item">
+                            <a class="nav-link" href="/hangfire" target="_blank">
+                                <i class="bi bi-gear"></i> Jobs
+                            </a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <label class="theme-toggle">
+                                <input type="checkbox" id="themeToggle" />
+                                <span class="theme-toggle-slider"></span>
+                            </label>
+                        </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-person-circle"></i> @User.Identity.Name
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                    <li>
+                                        <form asp-controller="Account" asp-action="Logout" method="post" class="px-2">
+                                            <button type="submit" class="btn btn-link nav-link text-dark w-100 text-start">
+                                                <i class="bi bi-box-arrow-right"></i> Çıkış Yap
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Account" asp-action="Login">
+                                    <i class="bi bi-box-arrow-in-right"></i> Giriş Yap
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Account" asp-action="Register">
+                                    <i class="bi bi-person-plus"></i> Kayıt Ol
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container-fluid">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted mt-5">
+        <div class="container">
+            &copy; 2026 - Security Scan Dashboard - SAST & DAST Testing Platform
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    
+    @* Dark Mode Theme Management *@
+    <script>
+        // Check for saved theme or system preference
+        const themeToggle = document.getElementById('themeToggle');
+        const savedTheme = localStorage.getItem('theme') || 
+                          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        
+        // Set initial theme
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        if (savedTheme === 'dark') {
+            themeToggle.checked = true;
+        }
+        
+        // Theme toggle event
+        themeToggle.addEventListener('change', function() {
+            const newTheme = this.checked ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+    </script>
+    
+    @* SignalR *@
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        // SignalR connection for real-time updates
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/scanHub")
+            .withAutomaticReconnect()
+            .build();
+
+        // Start connection
+        connection.start()
+            .then(() => console.log("SignalR connected"))
+            .catch(err => console.error("SignalR connection error:", err));
+
+        // Listen for scan updates
+        connection.on("ReceiveScanUpdate", function (scanId, status, progress) {
+            console.log(`Scan ${scanId}: ${status} (${progress}%)`);
+            
+            // Update progress bar if exists
+            const progressBar = document.getElementById(`scan-progress-${scanId}`);
+            if (progressBar) {
+                progressBar.style.width = progress + '%';
+                progressBar.setAttribute('aria-valuenow', progress);
+                progressBar.textContent = progress + '%';
+            }
+            
+            // Update status badge if exists
+            const statusBadge = document.getElementById(`scan-status-${scanId}`);
+            if (statusBadge) {
+                statusBadge.textContent = status;
+                statusBadge.className = 'badge bg-' + (status === 'Completed' ? 'success' : status === 'Failed' ? 'danger' : 'primary');
+            }
+        });
+
+        // Listen for scan completion
+        connection.on("ReceiveScanCompleted", function (scanId, repositoryName, status) {
+            console.log(`Scan ${scanId} for ${repositoryName}: ${status}`);
+            
+            // Show toast notification
+            const icon = status === 'Completed' ? 'success' : 'error';
+            const title = status === 'Completed' ? 'Scan Completed!' : 'Scan Failed';
+            const text = `${repositoryName} scan has ${status.toLowerCase()}`;
+            
+            Swal.fire({
+                icon: icon,
+                title: title,
+                text: text,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 5000,
+                timerProgressBar: true
+            });
+            
+            // Reload page after 2 seconds if on scan details page
+            if (window.location.pathname.includes('/Scan/Details') || 
+                window.location.pathname.includes('/Scan/Index') ||
+                window.location.pathname === '/' || 
+                window.location.pathname === '/Home/Index') {
+                setTimeout(() => location.reload(), 2000);
+            }
+        });
+
+        // Listen for vulnerability updates
+        connection.on("ReceiveVulnerabilityUpdate", function (scanId, critical, high, medium, low) {
+            console.log(`Vulnerabilities for scan ${scanId}: C:${critical}, H:${high}, M:${medium}, L:${low}`);
+            
+            // Update vulnerability badges
+            const criticalBadge = document.getElementById(`vuln-critical-${scanId}`);
+            const highBadge = document.getElementById(`vuln-high-${scanId}`);
+            const mediumBadge = document.getElementById(`vuln-medium-${scanId}`);
+            const lowBadge = document.getElementById(`vuln-low-${scanId}`);
+            
+            if (criticalBadge) criticalBadge.textContent = critical;
+            if (highBadge) highBadge.textContent = high;
+            if (mediumBadge) mediumBadge.textContent = medium;
+            if (lowBadge) lowBadge.textContent = low;
+        });
+
+        // Listen for dashboard updates
+        connection.on("ReceiveDashboardUpdate", function (stats) {
+            console.log("Dashboard updated:", stats);
+            // Reload dashboard if on home page
+            if (window.location.pathname === '/' || window.location.pathname === '/Home/Index') {
+                setTimeout(() => location.reload(), 1000);
+            }
+        });
+    </script>
+    
+    @* TempData notifications *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>
+            Swal.fire({
+                icon: 'success',
+                title: 'Başarılı!',
+                text: '@TempData["SuccessMessage"]',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        </script>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Hata!',
+                text: '@TempData["ErrorMessage"]',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true
+            });
+        </script>
+    }
+    @if (TempData["InfoMessage"] != null)
+    {
+        <script>
+            Swal.fire({
+                icon: 'info',
+                title: 'Bilgi',
+                text: '@TempData["InfoMessage"]',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        </script>
+    }
+    
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

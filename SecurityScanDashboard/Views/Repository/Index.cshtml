@@ -1,0 +1,138 @@
+@model IEnumerable<SecurityScanDashboard.Models.Repository>
+
+@{
+    ViewData["Title"] = "Repositories";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-github"></i> Repositories</h2>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Repository
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No repositories added yet. Click "Add Repository" to get started.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table id="repositoriesTable" class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Repository</th>
+                        <th>Owner</th>
+                        <th>URL</th>
+                        <th>Scans</th>
+                        <th>Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td><strong>@item.Name</strong></td>
+                            <td>@item.Owner</td>
+                            <td><a href="@item.Url" target="_blank" class="text-decoration-none">@item.Url</a></td>
+                            <td>
+                                <span class="badge bg-secondary">@item.Scans.Count</span>
+                            </td>
+                            <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info">
+                                    <i class="bi bi-eye"></i> Details
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger delete-repo-btn" data-repo-id="@item.Id" data-repo-name="@item.Name">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Initialize DataTables
+            $('#repositoriesTable').DataTable({
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+                     '<"row"<"col-sm-12"B>>' +
+                     '<"row"<"col-sm-12"tr>>' +
+                     '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                buttons: [
+                    {
+                        extend: 'copy',
+                        text: '<i class="bi bi-clipboard"></i> Copy',
+                        className: 'btn btn-sm btn-secondary'
+                    },
+                    {
+                        extend: 'csv',
+                        text: '<i class="bi bi-filetype-csv"></i> CSV',
+                        className: 'btn btn-sm btn-success'
+                    },
+                    {
+                        extend: 'excel',
+                        text: '<i class="bi bi-file-earmark-excel"></i> Excel',
+                        className: 'btn btn-sm btn-success'
+                    },
+                    {
+                        extend: 'pdf',
+                        text: '<i class="bi bi-filetype-pdf"></i> PDF',
+                        className: 'btn btn-sm btn-danger'
+                    },
+                    {
+                        extend: 'print',
+                        text: '<i class="bi bi-printer"></i> Print',
+                        className: 'btn btn-sm btn-info'
+                    }
+                ],
+                order: [[4, 'desc']], // Sort by Added date descending
+                pageLength: 10
+            });
+            
+            // Delete repository confirmation
+            $('.delete-repo-btn').click(function() {
+                var repoId = $(this).data('repo-id');
+                var repoName = $(this).data('repo-name');
+                
+                Swal.fire({
+                    title: 'Emin misiniz?',
+                    text: `"${repoName}" repository'sini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Evet, Sil!',
+                    cancelButtonText: 'İptal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Create a form and submit
+                        var form = $('<form>', {
+                            'method': 'POST',
+                            'action': '@Url.Action("Delete", "Repository")/' + repoId
+                        });
+                        
+                        // Add anti-forgery token
+                        form.append($('<input>', {
+                            'type': 'hidden',
+                            'name': '__RequestVerificationToken',
+                            'value': $('input[name="__RequestVerificationToken"]').val()
+                        }));
+                        
+                        $('body').append(form);
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}

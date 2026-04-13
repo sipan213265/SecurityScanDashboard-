@@ -1,0 +1,201 @@
+@{
+    ViewData["Title"] = "System Information";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-cpu"></i> System Information</h2>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Admin
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Server Information -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-server"></i> Server Information
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th width="40%">Machine Name</th>
+                                <td>@ViewBag.MachineName</td>
+                            </tr>
+                            <tr>
+                                <th>Operating System</th>
+                                <td>@ViewBag.OSVersion</td>
+                            </tr>
+                            <tr>
+                                <th>Processor Count</th>
+                                <td>@ViewBag.ProcessorCount cores</td>
+                            </tr>
+                            <tr>
+                                <th>.NET Version</th>
+                                <td>@ViewBag.DotNetVersion</td>
+                            </tr>
+                            <tr>
+                                <th>Working Directory</th>
+                                <td><code>@ViewBag.WorkingDirectory</code></td>
+                            </tr>
+                            <tr>
+                                <th>Base Directory</th>
+                                <td><code>@ViewBag.BaseDirectory</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memory Information -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-memory"></i> Memory Information
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th width="40%">Working Set</th>
+                                <td>@ViewBag.WorkingSet MB</td>
+                            </tr>
+                            <tr>
+                                <th>GC Total Memory</th>
+                                <td>@ViewBag.GCMemory MB</td>
+                            </tr>
+                            <tr>
+                                <th>GC Generation</th>
+                                <td>Gen 0: @GC.CollectionCount(0) | Gen 1: @GC.CollectionCount(1) | Gen 2: @GC.CollectionCount(2)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="mt-3">
+                        <h6>Memory Usage</h6>
+                        <div class="progress" style="height: 30px;">
+                            @{
+                                var memoryPercent = Math.Min(100, (ViewBag.WorkingSet / 1024.0) * 100);
+                                var progressColor = memoryPercent > 80 ? "bg-danger" : (memoryPercent > 60 ? "bg-warning" : "bg-success");
+                            }
+                            <div class="progress-bar @progressColor" role="progressbar" 
+                                 style="width: @memoryPercent%" 
+                                 aria-valuenow="@memoryPercent" aria-valuemin="0" aria-valuemax="100">
+                                @ViewBag.WorkingSet MB
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Process Information -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-app"></i> Process Information
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th width="40%">Process ID</th>
+                                <td>@System.Diagnostics.Process.GetCurrentProcess().Id</td>
+                            </tr>
+                            <tr>
+                                <th>Process Name</th>
+                                <td>@System.Diagnostics.Process.GetCurrentProcess().ProcessName</td>
+                            </tr>
+                            <tr>
+                                <th>Start Time</th>
+                                <td>@System.Diagnostics.Process.GetCurrentProcess().StartTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            </tr>
+                            <tr>
+                                <th>Uptime</th>
+                                <td>@ViewBag.Uptime</td>
+                            </tr>
+                            <tr>
+                                <th>Thread Count</th>
+                                <td>@System.Diagnostics.Process.GetCurrentProcess().Threads.Count</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Application Information -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-shield-check"></i> Application Information
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th width="40%">Application Name</th>
+                                <td>Security Scan Dashboard</td>
+                            </tr>
+                            <tr>
+                                <th>Environment</th>
+                                <td>
+                                    @{
+                                        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+                                        var envColor = env == "Development" ? "warning" : (env == "Production" ? "success" : "info");
+                                    }
+                                    <span class="badge bg-@envColor">@env</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>User Name</th>
+                                <td>@Environment.UserName</td>
+                            </tr>
+                            <tr>
+                                <th>User Domain</th>
+                                <td>@Environment.UserDomainName</td>
+                            </tr>
+                            <tr>
+                                <th>System Directory</th>
+                                <td><code>@Environment.SystemDirectory</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Environment Variables -->
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            <i class="bi bi-gear"></i> Environment Variables
+        </div>
+        <div class="card-body">
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-sm table-striped">
+                    <thead class="table-dark sticky-top">
+                        <tr>
+                            <th width="30%">Variable</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (System.Collections.DictionaryEntry envVar in Environment.GetEnvironmentVariables())
+                        {
+                            <tr>
+                                <td><strong>@envVar.Key</strong></td>
+                                <td><code style="font-size: 11px;">@envVar.Value</code></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
