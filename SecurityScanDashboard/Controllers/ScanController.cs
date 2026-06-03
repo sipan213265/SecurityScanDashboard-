@@ -63,8 +63,8 @@ namespace SecurityScanDashboard.Controllers
                 return NotFound();
             }
 
-            // Check ownership
-            if (scan.Repository.OwnerId != userId)
+            // Check ownership — Admin can view all scans
+            if (scan.Repository.OwnerId != userId && !User.IsInRole("Admin"))
             {
                 TempData["ErrorMessage"] = "You don't have permission to view this scan.";
                 return RedirectToAction(nameof(Index));
@@ -124,7 +124,7 @@ namespace SecurityScanDashboard.Controllers
 
         // POST: Scan/StartDAST
         [HttpPost]
-        public async Task<IActionResult> StartDAST(int repositoryId)
+        public async Task<IActionResult> StartDAST(int repositoryId, string? targetUrl = null)
         {
             int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
             var repository = await _context.Repositories.FindAsync(repositoryId);
@@ -137,6 +137,18 @@ namespace SecurityScanDashboard.Controllers
             if (repository.OwnerId != userId)
             {
                 return Json(new { success = false, message = "You don't have permission to scan this repository" });
+            }
+
+            // If a targetUrl was explicitly provided, update the repo's LiveUrl
+            if (!string.IsNullOrWhiteSpace(targetUrl))
+            {
+                repository.LiveUrl = targetUrl;
+                await _context.SaveChangesAsync();
+            }
+
+            if (string.IsNullOrWhiteSpace(repository.LiveUrl))
+            {
+                return Json(new { success = false, message = "Hedef URL gereklidir. Live URL tanımlayın veya tarama başlatırken URL girin." });
             }
 
             var scan = new Scan
@@ -154,7 +166,7 @@ namespace SecurityScanDashboard.Controllers
             // Queue the scan job
             BackgroundJob.Enqueue<ScanJob>(job => job.ExecuteDastScanAsync(scan.Id));
 
-            _logger.LogInformation($"DAST scan queued for repository {repositoryId}");
+            _logger.LogInformation($"DAST scan queued for repository {repositoryId}, target: {repository.LiveUrl}");
 
             return Json(new { success = true, scanId = scan.Id });
         }
@@ -238,8 +250,8 @@ namespace SecurityScanDashboard.Controllers
                 return NotFound();
             }
 
-            // Check ownership
-            if (scan.Repository.OwnerId != userId)
+            // Check ownership — Admin can view all scans
+            if (scan.Repository.OwnerId != userId && !User.IsInRole("Admin"))
             {
                 return Forbid();
             }
@@ -268,8 +280,8 @@ namespace SecurityScanDashboard.Controllers
                 return NotFound();
             }
 
-            // Check ownership
-            if (scan.Repository.OwnerId != userId)
+            // Check ownership — Admin can export all scans
+            if (scan.Repository.OwnerId != userId && !User.IsInRole("Admin"))
             {
                 return Forbid();
             }
@@ -295,8 +307,8 @@ namespace SecurityScanDashboard.Controllers
                 return NotFound();
             }
 
-            // Check ownership
-            if (scan.Repository.OwnerId != userId)
+            // Check ownership — Admin can export all scans
+            if (scan.Repository.OwnerId != userId && !User.IsInRole("Admin"))
             {
                 return Forbid();
             }
@@ -306,5 +318,42 @@ namespace SecurityScanDashboard.Controllers
 
             return File(csvBytes, "text/csv", fileName);
         }
+
+        // POST: Scan/ValidateVulnerability
+        [HttpPost]
+        public async Task<IActionResult> ValidateVulnerability(
+            [FromBody] ValidateVulnerabilityRequest request)
+        {
+            int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
+
+            var vuln = await _context.Vulnerabilities
+                .Include(v => v.Scan)
+                    .ThenInclude(s => s.Repository)
+                .FirstOrDefaultAsync(v => v.Id == request.VulnerabilityId);
+
+            if (vuln == null)
+                return NotFound(new { success = false, message = "Bulgu bulunamadı." });
+
+            if (vuln.Scan.Repository.OwnerId != userId && !User.IsInRole("Admin"))
+                return Forbid();
+
+            if (!Enum.TryParse<ValidationStatus>(request.Status, out var status))
+                return BadRequest(new { success = false, message = "Geçersiz durum." });
+
+            vuln.ValidationStatus = status;
+            vuln.ValidationNotes = request.Notes;
+            vuln.ValidatedBy = userId;
+            vuln.ValidatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true });
+        }
+    }
+
+    public class ValidateVulnerabilityRequest
+    {
+        public int VulnerabilityId { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string? Notes { get; set; }
     }
 }

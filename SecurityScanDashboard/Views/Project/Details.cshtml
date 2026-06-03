@@ -1,0 +1,359 @@
+@model SecurityScanDashboard.Models.Project
+@using SecurityScanDashboard.Models
+
+@{
+    ViewData["Title"] = Model.Name;
+    var allVulns = Model.Repositories.SelectMany(r => r.Scans).SelectMany(s => s.Vulnerabilities).ToList();
+    var openRepos = Model.Repositories.Where(r => r.ProjectId == Model.Id).ToList();
+}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Projelerim</a></li>
+            <li class="breadcrumb-item active">@Model.Name</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2><i class="bi bi-folder-fill text-warning"></i> @Model.Name</h2>
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <p class="text-muted">@Model.Description</p>
+            }
+        </div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-warning">
+            <i class="bi bi-pencil"></i> Düzenle
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center border-0 bg-light">
+                <div class="card-body py-3">
+                    <div class="fs-2 fw-bold text-primary">@Model.Repositories.Count</div>
+                    <div class="small text-muted">Repository</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-0 bg-light">
+                <div class="card-body py-3">
+                    <div class="fs-2 fw-bold text-secondary">@allVulns.Count</div>
+                    <div class="small text-muted">Toplam Bulgu</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-0 bg-light">
+                <div class="card-body py-3">
+                    <div class="fs-2 fw-bold text-danger">@allVulns.Count(v => v.Severity == SeverityLevel.Critical || v.Severity == SeverityLevel.High)</div>
+                    <div class="small text-muted">Kritik / Yüksek</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-0 bg-light">
+                <div class="card-body py-3">
+                    <div class="fs-2 fw-bold text-success">@allVulns.Count(v => v.ValidationStatus == ValidationStatus.Confirmed)</div>
+                    <div class="small text-muted">Doğrulanmış</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repositories in Project -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong><i class="bi bi-github"></i> Bu Projedeki Repositoryler</strong>
+        </div>
+        <div class="card-body p-0">
+            @if (!Model.Repositories.Any())
+            {
+                <div class="p-3 text-muted">
+                    Henüz repository eklenmedi. Aşağıdan mevcut repositoryler atayabilirsiniz.
+                </div>
+            }
+            else
+            {
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Repository</th>
+                            <th>Tarama</th>
+                            <th>Bulgular</th>
+                            <th>Son Tarama</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var repo in Model.Repositories)
+                        {
+                            var lastScan = repo.Scans.OrderByDescending(s => s.CreatedAt).FirstOrDefault();
+                            var vulnCount = repo.Scans.SelectMany(s => s.Vulnerabilities).Count();
+                            <tr>
+                                <td>
+                                    <a asp-controller="Repository" asp-action="Details" asp-route-id="@repo.Id">
+                                        @repo.Name
+                                    </a>
+                                </td>
+                                <td><span class="badge bg-secondary">@repo.Scans.Count</span></td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">@vulnCount</span>
+                                </td>
+                                <td>
+                                    @if (lastScan != null)
+                                    {
+                                        <small class="text-muted">@lastScan.StartedAt.ToString("dd.MM.yyyy HH:mm")</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">—</small>
+                                    }
+                                </td>
+                                <td>
+                                    <form asp-action="RemoveRepository" method="post" class="d-inline"
+                                          onsubmit="return confirm('@repo.Name reposunu bu projeden kaldırmak istediğinize emin misiniz?')">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="projectId" value="@Model.Id" />
+                                        <input type="hidden" name="repositoryId" value="@repo.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-x-circle"></i> Çıkar
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <!-- DAST Taraması -->
+    <div class="card shadow-sm mb-4 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <strong><i class="bi bi-bug"></i> DAST Taraması Başlat (Nuclei)</strong>
+        </div>
+        <div class="card-body">
+
+            <!-- URL ile doğrudan tarama (her zaman görünür) -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold"><i class="bi bi-link-45deg"></i> URL ile Hızlı Tarama</label>
+                <div class="input-group">
+                    <input type="url" class="form-control" id="quickDastUrl"
+                           placeholder="https://hedef-site.com" />
+                    <button class="btn btn-warning" onclick="startQuickDast()">
+                        <i class="bi bi-play-fill"></i> Tara
+                    </button>
+                </div>
+                <div class="form-text">Repository eklemeden herhangi bir URL'yi tarayabilirsiniz.</div>
+            </div>
+
+            @if (Model.Repositories.Any())
+            {
+                <hr class="my-3" />
+                <div class="mb-2 fw-semibold text-muted small">veya projedeki repository'e göre tara:</div>
+                <div class="row g-3">
+                    @foreach (var repo in Model.Repositories)
+                    {
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <div class="fw-semibold mb-2">
+                                    <i class="bi bi-github me-1"></i>@repo.Name
+                                </div>
+                                @if (!string.IsNullOrEmpty(repo.LiveUrl))
+                                {
+                                    <div class="mb-2">
+                                        <span class="badge bg-success">Live URL:</span>
+                                        <small class="text-muted ms-1">@repo.LiveUrl</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-warning w-100"
+                                            onclick="startDastScan(@repo.Id, '@repo.LiveUrl', '@repo.Name')">
+                                        <i class="bi bi-play-fill"></i> Tara
+                                    </button>
+                                }
+                                else
+                                {
+                                    <div class="input-group input-group-sm">
+                                        <input type="url" class="form-control"
+                                               id="dastUrl_@repo.Id"
+                                               placeholder="https://hedef-url.com" />
+                                        <button class="btn btn-warning"
+                                                onclick="startDastScanWithInput(@repo.Id, '@repo.Name')">
+                                            <i class="bi bi-play-fill"></i> Tara
+                                        </button>
+                                    </div>
+                                    <div class="form-text">Live URL tanımlı değil, hedef URL girin.</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Assign Existing Repository -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header">
+            <strong><i class="bi bi-plus-circle"></i> Mevcut Repository Ata</strong>
+        </div>
+        <div class="card-body">
+            <form asp-action="AssignRepository" method="post" class="d-flex gap-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="projectId" value="@Model.Id" />
+                <div class="flex-grow-1">
+                    <label class="form-label small">Repository seç</label>
+                    <select name="repositoryId" class="form-select" id="repoSelectAssign">
+                        <option value="">-- Repository seçin --</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Ata</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Assign by URL -->
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <strong><i class="bi bi-link-45deg"></i> GitHub URL ile Repository Ekle</strong>
+        </div>
+        <div class="card-body">
+            <form asp-action="AssignByUrl" method="post" class="d-flex gap-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="projectId" value="@Model.Id" />
+                <div class="flex-grow-1">
+                    <label class="form-label small">GitHub Repository URL</label>
+                    <input type="url" name="repoUrl" class="form-control"
+                           placeholder="https://github.com/owner/repo"
+                           pattern="https?://(www\.)?github\.com/[\w\-\.]+/[\w\-\.]+(/.*)?"
+                           required />
+                    <div class="form-text">Sistemde yoksa otomatik oluşturulur ve projeye atanır.</div>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-plus-lg"></i> Ekle
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Load unassigned repos for this user via API
+        fetch('/api/v1/repositories?pageSize=100')
+            .then(r => r.json())
+            .then(data => {
+                const sel = document.getElementById('repoSelectAssign');
+                const assignedIds = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Repositories.Select(r => r.Id)));
+                const items = data.data?.items || data.data || data.items || data || [];
+                items.forEach(repo => {
+                    if (!assignedIds.includes(repo.id)) {
+                        const opt = document.createElement('option');
+                        opt.value = repo.id;
+                        opt.textContent = repo.name;
+                        sel.appendChild(opt);
+                    }
+                });
+            })
+            .catch(() => {});
+
+        function startQuickDast() {
+            const input = document.getElementById('quickDastUrl');
+            const targetUrl = input.value.trim();
+            if (!targetUrl) {
+                input.focus();
+                input.classList.add('is-invalid');
+                return;
+            }
+            input.classList.remove('is-invalid');
+            if (!confirm(`Aşağıdaki URL için DAST taraması başlatılsın mı?\n${targetUrl}`)) return;
+
+            const btn = event.currentTarget;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Başlatılıyor...';
+
+            const params = new URLSearchParams({ targetUrl });
+            fetch('/Scan/StartQuickDAST', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: params.toString()
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    btn.innerHTML = '<i class="bi bi-check-lg"></i> Başlatıldı';
+                    btn.classList.replace('btn-warning', 'btn-success');
+                } else {
+                    alert('Hata: ' + (data.message || 'Tarama başlatılamadı.'));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-play-fill"></i> Tara';
+                }
+            })
+            .catch(() => {
+                alert('Bağlantı hatası.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-play-fill"></i> Tara';
+            });
+        }
+
+        function startDastScan(repositoryId, targetUrl, repoName) {
+            if (!targetUrl) {
+                alert('Hedef URL girilmedi.');
+                return;
+            }
+            if (!confirm(`"${repoName}" için DAST taraması başlatılsın mı?\n${targetUrl}`)) return;
+            executeDast(repositoryId, targetUrl, repoName);
+        }
+
+        function startDastScanWithInput(repositoryId, repoName) {
+            const input = document.getElementById('dastUrl_' + repositoryId);
+            const targetUrl = input.value.trim();
+            if (!targetUrl) {
+                input.focus();
+                input.classList.add('is-invalid');
+                return;
+            }
+            input.classList.remove('is-invalid');
+            if (!confirm(`"${repoName}" için DAST taraması başlatılsın mı?\n${targetUrl}`)) return;
+            executeDast(repositoryId, targetUrl, repoName);
+        }
+
+        function executeDast(repositoryId, targetUrl, repoName) {
+            const btn = event.currentTarget;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Başlatılıyor...';
+
+            const params = new URLSearchParams({ repositoryId, targetUrl });
+
+            fetch('/Scan/StartDAST', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded',
+                           'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value },
+                body: params.toString()
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    btn.innerHTML = '<i class="bi bi-check-lg"></i> Başlatıldı';
+                    btn.classList.replace('btn-warning', 'btn-success');
+                } else {
+                    alert('Hata: ' + (data.message || 'Tarama başlatılamadı.'));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-play-fill"></i> Tara';
+                }
+            })
+            .catch(() => {
+                alert('Bağlantı hatası.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-play-fill"></i> Tara';
+            });
+        }
+    </script>
+}

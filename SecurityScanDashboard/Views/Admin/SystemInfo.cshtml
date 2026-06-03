@@ -61,7 +61,7 @@
                         <tbody>
                             <tr>
                                 <th width="40%">Working Set</th>
-                                <td>@ViewBag.WorkingSet MB</td>
+                                <td>@(ViewBag.WorkingSet ?? 0) MB</td>
                             </tr>
                             <tr>
                                 <th>GC Total Memory</th>
@@ -78,13 +78,14 @@
                         <h6>Memory Usage</h6>
                         <div class="progress" style="height: 30px;">
                             @{
-                                var memoryPercent = Math.Min(100, (ViewBag.WorkingSet / 1024.0) * 100);
+                                double workingSetMb = ViewBag.WorkingSet != null ? (double)ViewBag.WorkingSet : 0.0;
+                                var memoryPercent = Math.Min(100.0, (workingSetMb / 1024.0) * 100);
                                 var progressColor = memoryPercent > 80 ? "bg-danger" : (memoryPercent > 60 ? "bg-warning" : "bg-success");
                             }
                             <div class="progress-bar @progressColor" role="progressbar" 
                                  style="width: @memoryPercent%" 
                                  aria-valuenow="@memoryPercent" aria-valuemin="0" aria-valuemax="100">
-                                @ViewBag.WorkingSet MB
+                                @workingSetMb MB
                             </div>
                         </div>
                     </div>

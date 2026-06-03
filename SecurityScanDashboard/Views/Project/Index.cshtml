@@ -1,0 +1,78 @@
+@model IEnumerable<SecurityScanDashboard.Models.Project>
+
+@{
+    ViewData["Title"] = "Projelerim";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-folder2-open"></i> Projelerim</h2>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Yeni Proje
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Henüz proje yok. "Yeni Proje" butonu ile başlayın.
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            @foreach (var project in Model)
+            {
+                var repoCount = project.Repositories.Count;
+                var totalVulns = project.Repositories
+                    .SelectMany(r => r.Scans)
+                    .SelectMany(s => s.Vulnerabilities).Count();
+                var criticalCount = project.Repositories
+                    .SelectMany(r => r.Scans)
+                    .SelectMany(s => s.Vulnerabilities)
+                    .Count(v => v.Severity == SecurityScanDashboard.Models.SeverityLevel.Critical);
+
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-folder-fill text-warning"></i>
+                                @project.Name
+                            </h5>
+                            @if (!string.IsNullOrEmpty(project.Description))
+                            {
+                                <p class="card-text text-muted small">@project.Description</p>
+                            }
+                            <div class="d-flex gap-2 mt-2">
+                                <span class="badge bg-secondary"><i class="bi bi-github"></i> @repoCount repo</span>
+                                <span class="badge bg-warning text-dark"><i class="bi bi-bug"></i> @totalVulns bulgu</span>
+                                @if (criticalCount > 0)
+                                {
+                                    <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> @criticalCount kritik</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <small class="text-muted">@project.CreatedAt.ToString("dd.MM.yyyy")</small>
+                            <div>
+                                <a asp-action="Details" asp-route-id="@project.Id" class="btn btn-sm btn-info">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a asp-action="Edit" asp-route-id="@project.Id" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@project.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('@project.Name projesini silmek istediğinize emin misiniz?')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

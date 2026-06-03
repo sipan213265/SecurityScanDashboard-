@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SecurityScanDashboard.Data;
@@ -11,9 +12,11 @@ using SecurityScanDashboard.Data;
 namespace SecurityScanDashboard.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260423184003_AddAppSettings")]
+    partial class AddAppSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,33 +33,18 @@ namespace SecurityScanDashboard.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("created_by");
-
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("Key");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("UpdatedAt");
-
-                    b.Property<int?>("UpdatedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("updated_by");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Value")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("Value");
+                        .HasColumnType("character varying(2000)");
 
                     b.HasKey("Id");
 
@@ -64,41 +52,6 @@ namespace SecurityScanDashboard.Migrations
                         .IsUnique();
 
                     b.ToTable("AppSettings", "belek_appsec");
-                });
-
-            modelBuilder.Entity("SecurityScanDashboard.Models.Project", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("OwnerId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwnerId");
-
-                    b.ToTable("Projects", "belek_appsec");
                 });
 
             modelBuilder.Entity("SecurityScanDashboard.Models.Repository", b =>
@@ -110,12 +63,7 @@ namespace SecurityScanDashboard.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("created_by");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("LiveUrl")
                         .HasMaxLength(500)
@@ -132,17 +80,6 @@ namespace SecurityScanDashboard.Migrations
                     b.Property<int>("OwnerId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("ProjectId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int?>("UpdatedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("updated_by");
-
                     b.Property<string>("Url")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -151,8 +88,6 @@ namespace SecurityScanDashboard.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerId");
-
-                    b.HasIndex("ProjectId");
 
                     b.HasIndex("Url");
 
@@ -217,14 +152,6 @@ namespace SecurityScanDashboard.Migrations
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime?>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("created_by");
-
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("text");
 
@@ -245,14 +172,6 @@ namespace SecurityScanDashboard.Migrations
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int?>("UpdatedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("updated_by");
 
                     b.HasKey("Id");
 
@@ -297,10 +216,6 @@ namespace SecurityScanDashboard.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("first_name");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
                     b.Property<bool>("IsEmailVerified")
                         .HasColumnType("boolean")
                         .HasColumnName("is_email_verified");
@@ -319,6 +234,14 @@ namespace SecurityScanDashboard.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
+
+                    b.Property<DateTime?>("PasswordResetExpires")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_reset_expires");
+
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("text")
+                        .HasColumnName("password_reset_token");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(20)
@@ -404,14 +327,6 @@ namespace SecurityScanDashboard.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("created_by");
-
                     b.Property<string>("CveId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -433,13 +348,6 @@ namespace SecurityScanDashboard.Migrations
                     b.Property<int?>("LineNumber")
                         .HasColumnType("integer");
 
-                    b.Property<string>("MatchedAt")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Remediation")
-                        .HasColumnType("text");
-
                     b.Property<int>("ScanId")
                         .HasColumnType("integer");
 
@@ -452,28 +360,6 @@ namespace SecurityScanDashboard.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int?>("UpdatedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("updated_by");
-
-                    b.Property<DateTime?>("ValidatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("ValidatedBy")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ValidationNotes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("ValidationStatus")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.HasKey("Id");
 
                     b.HasIndex("DetectedAt");
@@ -485,17 +371,6 @@ namespace SecurityScanDashboard.Migrations
                     b.ToTable("Vulnerabilities", "belek_appsec");
                 });
 
-            modelBuilder.Entity("SecurityScanDashboard.Models.Project", b =>
-                {
-                    b.HasOne("SecurityScanDashboard.Models.User", "Owner")
-                        .WithMany()
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Owner");
-                });
-
             modelBuilder.Entity("SecurityScanDashboard.Models.Repository", b =>
                 {
                     b.HasOne("SecurityScanDashboard.Models.User", "RepositoryOwner")
@@ -503,13 +378,6 @@ namespace SecurityScanDashboard.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("SecurityScanDashboard.Models.Project", "Project")
-                        .WithMany("Repositories")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Project");
 
                     b.Navigation("RepositoryOwner");
                 });
@@ -553,11 +421,6 @@ namespace SecurityScanDashboard.Migrations
                         .IsRequired();
 
                     b.Navigation("Scan");
-                });
-
-            modelBuilder.Entity("SecurityScanDashboard.Models.Project", b =>
-                {
-                    b.Navigation("Repositories");
                 });
 
             modelBuilder.Entity("SecurityScanDashboard.Models.Repository", b =>

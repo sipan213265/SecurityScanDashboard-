@@ -127,16 +127,21 @@
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
                                     <a href="@Url.Action("Details", "Scan", new { id = scan.Id })" 
-                                       class="btn btn-info" title="View Details">
+                                       class="btn btn-info" title="Detaylar">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     @if (scan.Status == ScanStatus.Completed)
                                     {
                                         <a href="@Url.Action("ExportPdf", "Scan", new { id = scan.Id })" 
-                                           class="btn btn-danger" title="Export PDF">
+                                           class="btn btn-danger" title="PDF İndir">
                                             <i class="bi bi-file-pdf"></i>
                                         </a>
                                     }
+                                    <button class="btn btn-outline-danger" 
+                                            onclick="deleteScan(@scan.Id)"
+                                            title="Taramayı Sil">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -150,8 +155,7 @@
 @section Scripts {
     <script>
         $(document).ready(function() {
-            $('#scansTable').DataTable({
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+            $('#scansTable').DataTable({                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
                      '<"row"<"col-sm-12"B>>' +
                      '<"row"<"col-sm-12"tr>>' +
                      '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
@@ -186,6 +190,33 @@
                 pageLength: 10
             });
         });
+
+        function deleteScan(id) {
+            Swal.fire({
+                title: 'Taramayı Sil',
+                html: `Tarama <strong>#${id}</strong> ve tüm bulgularını silmek istediğinize emin misiniz?<br>` +
+                      `<span class="text-danger">Bu işlem geri alınamaz!</span>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Evet, sil',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/Admin/DeleteScan?id=${id}`, { method: 'POST' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({ icon: 'success', title: 'Silindi', text: data.message, timer: 2000 })
+                                    .then(() => location.reload());
+                            } else {
+                                Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
+                            }
+                        });
+                }
+            });
+        }
     </script>
 
     <style>

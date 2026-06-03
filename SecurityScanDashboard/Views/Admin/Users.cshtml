@@ -60,11 +60,14 @@
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-success" onclick="openRoleModal('@user.Id', '@user.Username', 'assign')" title="Assign Role">
+                                    <button class="btn btn-success" onclick="openRoleModal('@user.Id', '@user.Username', 'assign')" title="Rol Ata">
                                         <i class="bi bi-plus-circle"></i>
                                     </button>
-                                    <button class="btn btn-danger" onclick="openRoleModal('@user.Id', '@user.Username', 'remove')" title="Remove Role">
+                                    <button class="btn btn-warning" onclick="openRoleModal('@user.Id', '@user.Username', 'remove')" title="Rol Kaldır">
                                         <i class="bi bi-dash-circle"></i>
+                                    </button>
+                                    <button class="btn btn-danger" onclick="deleteUser('@user.Id', '@user.Username')" title="Kullanıcıyı Sil">
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
                             </td>
@@ -176,34 +179,43 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success',
-                            text: data.message,
-                            timer: 2000
-                        }).then(() => {
-                            location.reload();
-                        });
+                        Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message, timer: 2000 })
+                            .then(() => location.reload());
                     } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: data.message
-                        });
+                        Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
                     }
                 })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Failed to manage role: ' + error.message
-                    });
-                });
+                .catch(error => Swal.fire({ icon: 'error', title: 'Hata', text: error.message }));
             
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('roleModal'));
-            modal.hide();
+            bootstrap.Modal.getInstance(document.getElementById('roleModal')).hide();
+        }
+
+        function deleteUser(userId, userName) {
+            Swal.fire({
+                title: 'Kullanıcıyı Sil',
+                html: `<strong>${userName}</strong> kullanıcısını silmek istediğinize emin misiniz?<br>` +
+                      `<span class="text-danger">Bu işlem geri alınamaz! Tüm repo ve taramaları da silinecek.</span>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Evet, sil',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/Admin/DeleteUser?id=${userId}`, { method: 'POST' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({ icon: 'success', title: 'Silindi', text: data.message, timer: 2000 })
+                                    .then(() => location.reload());
+                            } else {
+                                Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
+                            }
+                        })
+                        .catch(err => Swal.fire({ icon: 'error', title: 'Bağlantı hatası', text: err.message }));
+                }
+            });
         }
     </script>
 }

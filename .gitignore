@@ -1,29 +1,45 @@
-# Ignore temporary clone directories
+# ─── Geçici dosyalar ──────────────────────────────────────────────────────────
 temp/
 *.tmp
+~$*
 
-# Ignore .NET build artifacts
+# ─── .NET derleme çıktıları ───────────────────────────────────────────────────
 bin/
 obj/
 *.user
 *.suo
 *.cache
+*.nupkg
 
-# Ignore Visual Studio files
+# ─── Visual Studio / IDE ──────────────────────────────────────────────────────
 .vs/
 .vscode/
+*.DotSettings.user
 
-# Ignore environment files
+# ─── Ortam / Yapılandırma (hassas bilgi içerir) ───────────────────────────────
 *.env
 appsettings.Development.json
+appsettings.Production.json
 
-# Ignore logs
+# ─── Loglar ───────────────────────────────────────────────────────────────────
 logs/
 *.log
 
-# Ignore database files
+# ─── Veritabanı dosyaları ─────────────────────────────────────────────────────
 *.db
 *.sqlite
 
-# Ignore Node modules (if any frontend tooling added later)
+# ─── Python ortamı ve üretilen dosyalar ──────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+generate_thesis.py
+generate_presentation.py
+generate_report.py
+fix_page_numbers.py
+diag_docx.py
+*.pptx
+*.docx
+
+# ─── Node modules ─────────────────────────────────────────────────────────────
 node_modules/

@@ -8,13 +8,16 @@ namespace SecurityScanDashboard.Controllers
     public class AccountController : Controller
     {
         private readonly IAuthenticationService _authService;
+        private readonly IEmailService _emailService;
         private readonly ILogger<AccountController> _logger;
 
         public AccountController(
             IAuthenticationService authService,
+            IEmailService emailService,
             ILogger<AccountController> logger)
         {
             _authService = authService;
+            _emailService = emailService;
             _logger = logger;
         }
 
@@ -117,6 +120,79 @@ namespace SecurityScanDashboard.Controllers
         {
             return View();
         }
+
+        // GET: /Account/ForgotPassword
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ForgotPassword() => View();
+
+        // POST: /Account/ForgotPassword
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var (success, tokenOrMessage) = await _authService.GeneratePasswordResetTokenAsync(model.Email);
+
+            if (success && tokenOrMessage.Length > 20)
+            {
+                // tokenOrMessage is the actual token here
+                var resetLink = Url.Action("ResetPassword", "Account",
+                    new { token = tokenOrMessage }, Request.Scheme)!;
+
+                try
+                {
+                    await _emailService.SendPasswordResetEmailAsync(model.Email, model.Email, resetLink);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Password reset email failed for {Email}", model.Email);
+                }
+            }
+
+            // Always show the same message (don't reveal if email exists)
+            TempData["SuccessMessage"] = "Eğer bu email kayıtlıysa, şifre sıfırlama linki gönderildi.";
+            return RedirectToAction("ForgotPasswordConfirmation");
+        }
+
+        // GET: /Account/ForgotPasswordConfirmation
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ForgotPasswordConfirmation() => View();
+
+        // GET: /Account/ResetPassword?token=...
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ResetPassword(string? token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return RedirectToAction("Login");
+            return View(new ResetPasswordViewModel { Token = token });
+        }
+
+        // POST: /Account/ResetPassword
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var (success, message) = await _authService.ResetPasswordAsync(model.Token, model.Password);
+
+            if (success)
+            {
+                TempData["SuccessMessage"] = message;
+                return RedirectToAction("Login");
+            }
+
+            ModelState.AddModelError(string.Empty, message);
+            return View(model);
+        }
     }
 
     // View Models
@@ -168,5 +244,30 @@ namespace SecurityScanDashboard.Controllers
 
         [Display(Name = "Beni Hatırla")]
         public bool RememberMe { get; set; }
+    }
+
+    public class ForgotPasswordViewModel
+    {
+        [Required(ErrorMessage = "Email gereklidir")]
+        [EmailAddress(ErrorMessage = "Geçerli bir email adresi giriniz")]
+        [Display(Name = "Email")]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class ResetPasswordViewModel
+    {
+        [Required]
+        public string Token { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Yeni şifre gereklidir")]
+        [StringLength(100, ErrorMessage = "{0} en az {2} karakter olmalıdır.", MinimumLength = 6)]
+        [DataType(DataType.Password)]
+        [Display(Name = "Yeni Şifre")]
+        public string Password { get; set; } = string.Empty;
+
+        [DataType(DataType.Password)]
+        [Display(Name = "Yeni Şifreyi Onayla")]
+        [Compare("Password", ErrorMessage = "Şifreler eşleşmiyor.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

@@ -88,6 +88,8 @@ namespace SecurityScanDashboard.Services
                                     Severity = MapSeverity(result.Info?.Severity),
                                     CweId = string.Join(",", result.Info?.Classification?.CweId ?? new List<string>()),
                                     CveId = string.Join(",", result.Info?.Classification?.CveId ?? new List<string>()),
+                                    MatchedAt = result.MatchedAt,
+                                    Remediation = result.Info?.Remediation ?? GetStaticRemediation(result.Info?.Severity),
                                     DetectedAt = DateTime.UtcNow
                                 });
                             }
@@ -111,6 +113,18 @@ namespace SecurityScanDashboard.Services
             }
 
             return vulnerabilities;
+        }
+
+        private static string GetStaticRemediation(string? severity)
+        {
+            return severity?.ToLower() switch
+            {
+                "critical" => "Bu kritik bulgu için acil aksiyon alın: bileşeni/yamayı hemen güncelleyin, sistemi izole edin ve yetkisiz erişim loglarını inceleyin.",
+                "high" => "En kısa sürede ilgili bileşeni güncelleyin veya yamayı uygulayın. Sistemi izleyin ve şüpheli erişimleri kontrol edin.",
+                "medium" => "Sonraki bakım döngüsünde bileşeni güncelleyin, yapılandırmayı gözden geçirin ve güvenli kodlama pratiklerini uygulayın.",
+                "low" => "Gereksiz servisleri kapatın, güvenli yapılandırma kullanın ve düzenli güvenlik taramaları yapın.",
+                _ => "Bulguyu inceleyip risk değerlendirmesi yapın, ilgili bileşen veya yapılandırmayı güncelleyin."
+            };
         }
 
         private SeverityLevel MapSeverity(string? severity)
@@ -154,6 +168,9 @@ namespace SecurityScanDashboard.Services
             
             [JsonPropertyName("severity")]
             public string? Severity { get; set; }
+
+            [JsonPropertyName("remediation")]
+            public string? Remediation { get; set; }
             
             [JsonPropertyName("classification")]
             public NucleiClassification? Classification { get; set; }

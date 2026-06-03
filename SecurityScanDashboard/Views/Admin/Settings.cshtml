@@ -1,5 +1,8 @@
+@model Dictionary<string, string>
 @{
     ViewData["Title"] = "Application Settings";
+    string V(string key) => Model.TryGetValue(key, out var v) ? v : "";
+    bool B(string key, bool def = false) => Model.TryGetValue(key, out var v) ? v == "true" : def;
 }
 
 <div class="container-fluid mt-4">
@@ -21,28 +24,38 @@
                     <form id="emailSettingsForm">
                         <div class="mb-3">
                             <label class="form-label">SMTP Host</label>
-                            <input type="text" class="form-control" id="smtpHost" placeholder="smtp.gmail.com">
+                            <input type="text" class="form-control" id="smtpHost" value="@V("Email:SmtpHost")" placeholder="smtp.gmail.com">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">SMTP Port</label>
-                            <input type="number" class="form-control" id="smtpPort" placeholder="587">
+                            <input type="number" class="form-control" id="smtpPort" value="@V("Email:SmtpPort")" placeholder="587">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">SMTP Username</label>
-                            <input type="text" class="form-control" id="smtpUsername">
+                            <input type="text" class="form-control" id="smtpUsername" value="@V("Email:SmtpUsername")">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">SMTP Password</label>
-                            <input type="password" class="form-control" id="smtpPassword">
+                            <input type="password" class="form-control" id="smtpPassword" value="@V("Email:SmtpPassword")" placeholder="(unchanged if left empty)">
+                            <small class="form-text text-muted">Leave empty to keep existing password.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">From Email</label>
+                            <input type="email" class="form-control" id="fromEmail" value="@V("Email:FromEmail")">
                         </div>
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="enableSsl" checked>
-                            <label class="form-check-label" for="enableSsl">
-                                Enable SSL/TLS
-                            </label>
+                            <input type="checkbox" class="form-check-input" id="enableSsl" @(B("Email:EnableSsl", true) ? "checked" : "")>
+                            <label class="form-check-label" for="enableSsl">Enable SSL/TLS</label>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="sendOnComplete" @(B("Email:SendOnComplete", true) ? "checked" : "")>
+                            <label class="form-check-label" for="sendOnComplete">Send email on scan completion</label>
                         </div>
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save"></i> Save Email Settings
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary ms-2" id="testEmailBtn">
+                            <i class="bi bi-send"></i> Send Test Email
                         </button>
                     </form>
                 </div>
@@ -59,29 +72,24 @@
                     <form id="scanSettingsForm">
                         <div class="mb-3">
                             <label class="form-label">Maximum Concurrent Scans</label>
-                            <input type="number" class="form-control" id="maxConcurrentScans" value="3" min="1" max="10">
+                            <input type="number" class="form-control" id="maxConcurrentScans" value="@V("Scan:MaxConcurrent")" min="1" max="10">
                             <small class="form-text text-muted">Number of scans that can run simultaneously</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Scan Timeout (minutes)</label>
-                            <input type="number" class="form-control" id="scanTimeout" value="60" min="5" max="240">
+                            <input type="number" class="form-control" id="scanTimeout" value="@V("Scan:TimeoutMinutes")" min="5" max="240">
                             <small class="form-text text-muted">Maximum time allowed for a single scan</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Auto-Scan Schedule</label>
                             <select class="form-select" id="autoScanSchedule">
-                                <option value="none">Disabled</option>
-                                <option value="daily">Daily</option>
-                                <option value="weekly">Weekly</option>
-                                <option value="monthly">Monthly</option>
+                                @{ var sched = V("Scan:AutoSchedule"); }
+                                <option value="none" selected="@(sched=="none"?"selected":null)">Disabled</option>
+                                <option value="daily" selected="@(sched=="daily"?"selected":null)">Daily</option>
+                                <option value="weekly" selected="@(sched=="weekly"?"selected":null)">Weekly</option>
+                                <option value="monthly" selected="@(sched=="monthly"?"selected":null)">Monthly</option>
                             </select>
                             <small class="form-text text-muted">Automatically scan repositories</small>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="sendEmailOnComplete" checked>
-                            <label class="form-check-label" for="sendEmailOnComplete">
-                                Send email notification on scan completion
-                            </label>
                         </div>
                         <button type="submit" class="btn btn-success">
                             <i class="bi bi-save"></i> Save Scan Settings
@@ -184,10 +192,10 @@
                 <i class="bi bi-info-circle"></i> Important Information
             </h5>
             <ul class="mb-0">
-                <li>Settings are currently stored in memory and will reset on application restart.</li>
-                <li>For production deployment, configure settings in <code>appsettings.json</code> or environment variables.</li>
-                <li>Some security settings require application restart to take effect.</li>
-                <li>Email settings must be configured before email notifications can be sent.</li>
+                <li>Settings are stored in the database and persist across application restarts.</li>
+                <li>Email settings take effect immediately on the next scan completion.</li>
+                <li>Use the <strong>Send Test Email</strong> button to verify your SMTP configuration.</li>
+                <li>Gmail users: enable 2FA and create an App Password at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>.</li>
             </ul>
         </div>
     </div>
@@ -195,52 +203,95 @@
 
 @section Scripts {
     <script>
-        // Email Settings Form
-        document.getElementById('emailSettingsForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Settings Saved',
-                text: 'Email settings have been saved successfully',
-                timer: 2000
+        async function saveSettings(payload) {
+            const resp = await fetch('@Url.Action("UpdateSettings","Admin")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '' },
+                body: JSON.stringify(payload)
             });
+            return await resp.json();
+        }
+
+        // Email Settings Form
+        document.getElementById('emailSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const pwd = document.getElementById('smtpPassword').value;
+            const payload = {
+                'Email:SmtpHost':     document.getElementById('smtpHost').value,
+                'Email:SmtpPort':     document.getElementById('smtpPort').value,
+                'Email:SmtpUsername': document.getElementById('smtpUsername').value,
+                'Email:FromEmail':    document.getElementById('fromEmail').value,
+                'Email:EnableSsl':    document.getElementById('enableSsl').checked ? 'true' : 'false',
+                'Email:SendOnComplete': document.getElementById('sendOnComplete').checked ? 'true' : 'false',
+            };
+            if (pwd) payload['Email:SmtpPassword'] = pwd;
+            const r = await saveSettings(payload);
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.success ? 'Saved' : 'Error', text: r.message, timer: 2500 });
+        });
+
+        // Test Email Button
+        document.getElementById('testEmailBtn').addEventListener('click', async function() {
+            const { value: email } = await Swal.fire({
+                title: 'Send Test Email',
+                input: 'email',
+                inputLabel: 'Recipient email address',
+                inputPlaceholder: 'test@example.com',
+                showCancelButton: true
+            });
+            if (!email) return;
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending...';
+            try {
+                const resp = await fetch('@Url.Action("SendTestEmail","Admin")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const r = await resp.json();
+                Swal.fire({ icon: r.success ? 'success' : 'error', title: r.success ? 'Sent!' : 'Failed', text: r.message });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send"></i> Send Test Email';
+            }
         });
 
         // Scan Settings Form
-        document.getElementById('scanSettingsForm').addEventListener('submit', function(e) {
+        document.getElementById('scanSettingsForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Settings Saved',
-                text: 'Scan settings have been saved successfully',
-                timer: 2000
-            });
+            const payload = {
+                'Scan:MaxConcurrent':  document.getElementById('maxConcurrentScans').value,
+                'Scan:TimeoutMinutes': document.getElementById('scanTimeout').value,
+                'Scan:AutoSchedule':   document.getElementById('autoScanSchedule').value,
+            };
+            const r = await saveSettings(payload);
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.success ? 'Saved' : 'Error', text: r.message, timer: 2000 });
         });
 
         // Security Settings Form
-        document.getElementById('securitySettingsForm').addEventListener('submit', function(e) {
+        document.getElementById('securitySettingsForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Settings Saved',
-                text: 'Security settings have been saved successfully. Some changes may require application restart.',
-                timer: 2500
-            });
+            const payload = {
+                'Security:SessionTimeoutMinutes': document.getElementById('sessionTimeout').value,
+                'Security:PasswordMinLength':     document.getElementById('passwordMinLength').value,
+                'Security:RequireUppercase':      document.getElementById('requireUppercase').checked ? 'true' : 'false',
+                'Security:RequireDigit':          document.getElementById('requireDigit').checked ? 'true' : 'false',
+                'Security:RequireNonAlphanumeric':document.getElementById('requireNonAlphanumeric').checked ? 'true' : 'false',
+            };
+            const r = await saveSettings(payload);
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.success ? 'Saved' : 'Error', text: r.message, timer: 2500 });
         });
 
         // Application Settings Form
-        document.getElementById('applicationSettingsForm').addEventListener('submit', function(e) {
+        document.getElementById('applicationSettingsForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Settings Saved',
-                text: 'Application settings have been saved successfully',
-                timer: 2000
-            });
+            const payload = {
+                'App:ItemsPerPage':      document.getElementById('itemsPerPage').value,
+                'App:LogRetentionDays':  document.getElementById('logRetention').value,
+                'App:EnableSwagger':     document.getElementById('enableSwagger').checked ? 'true' : 'false',
+            };
+            const r = await saveSettings(payload);
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.success ? 'Saved' : 'Error', text: r.message, timer: 2000 });
         });
     </script>
 }

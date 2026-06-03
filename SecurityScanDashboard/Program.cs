@@ -152,6 +152,7 @@ builder.Services.AddScoped<ISemgrepService, SemgrepService>();
 builder.Services.AddScoped<INucleiService, NucleiService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IPdfReportService, PdfReportService>();
+builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ScanJob>();
 builder.Services.AddScoped<CleanupJob>();
@@ -254,6 +255,19 @@ app.MapControllerRoute(
 
 // Map SignalR Hub
 app.MapHub<SecurityScanDashboard.Hubs.ScanHub>("/scanHub");
+
+    // Apply pending EF migrations at startup (non-fatal if DB permissions are limited)
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SecurityScanDashboard.Data.ApplicationDbContext>();
+        db.Database.Migrate();
+        Log.Information("Database migrations applied successfully");
+    }
+    catch (Exception migEx)
+    {
+        Log.Warning(migEx, "Could not apply migrations automatically — run SQL manually in Neon dashboard");
+    }
 
     Log.Information("Security Scan Dashboard started successfully");
     app.Run();

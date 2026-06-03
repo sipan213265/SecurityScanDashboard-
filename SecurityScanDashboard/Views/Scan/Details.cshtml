@@ -97,8 +97,25 @@
             </div>
 
             <div class="card">
-                <div class="card-header bg-danger text-white">
-                    <i class="bi bi-exclamation-triangle"></i> Vulnerabilities (@Model.Vulnerabilities.Count)
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-exclamation-triangle"></i> Vulnerabilities (@Model.Vulnerabilities.Count)</span>
+                    <div class="d-flex gap-1">
+                        <select id="filterSeverity" class="form-select form-select-sm" style="width:auto">
+                            <option value="">Tüm Şiddetler</option>
+                            <option value="Critical">Critical</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                        <select id="filterStatus" class="form-select form-select-sm" style="width:auto">
+                            <option value="">Tüm Durumlar</option>
+                            <option value="Unreviewed">İncelenmedi</option>
+                            <option value="Confirmed">Onaylandı</option>
+                            <option value="FalsePositive">Yanlış Pozitif</option>
+                            <option value="InProgress">İşlemde</option>
+                            <option value="Resolved">Çözüldü</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="card-body">
                     @if (!Model.Vulnerabilities.Any())
@@ -110,15 +127,15 @@
                     else
                     {
                         <div class="table-responsive">
-                            <table class="table table-sm">
+                            <table class="table table-sm" id="vulnTable">
                                 <thead>
                                     <tr>
-                                        <th>Severity</th>
-                                        <th>Title</th>
-                                        <th>File</th>
-                                        <th>Line</th>
+                                        <th>Şiddet</th>
+                                        <th>Başlık</th>
+                                        <th>Konum</th>
                                         <th>CWE/CVE</th>
-                                        <th>Details</th>
+                                        <th>Durum</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -131,14 +148,41 @@
                                             SecurityScanDashboard.Models.SeverityLevel.Medium => "info",
                                             _ => "secondary"
                                         };
+                                        var statusClass = vuln.ValidationStatus switch
+                                        {
+                                            SecurityScanDashboard.Models.ValidationStatus.Confirmed => "success",
+                                            SecurityScanDashboard.Models.ValidationStatus.FalsePositive => "secondary",
+                                            SecurityScanDashboard.Models.ValidationStatus.InProgress => "warning",
+                                            SecurityScanDashboard.Models.ValidationStatus.Resolved => "primary",
+                                            _ => "light text-dark border"
+                                        };
+                                        var statusLabel = vuln.ValidationStatus switch
+                                        {
+                                            SecurityScanDashboard.Models.ValidationStatus.Confirmed => "Onaylandı",
+                                            SecurityScanDashboard.Models.ValidationStatus.FalsePositive => "Yanlış Poz.",
+                                            SecurityScanDashboard.Models.ValidationStatus.InProgress => "İşlemde",
+                                            SecurityScanDashboard.Models.ValidationStatus.Resolved => "Çözüldü",
+                                            _ => "İncelenmedi"
+                                        };
 
-                                        <tr>
+                                        <tr data-severity="@vuln.Severity" data-status="@vuln.ValidationStatus">
                                             <td>
                                                 <span class="badge bg-@severityClass">@vuln.Severity</span>
                                             </td>
-                                            <td><strong>@vuln.Title</strong></td>
-                                            <td><code>@(vuln.FilePath ?? "-")</code></td>
-                                            <td>@(vuln.LineNumber?.ToString() ?? "-")</td>
+                                            <td>
+                                                <strong>@vuln.Title</strong>
+                                                @if (!string.IsNullOrEmpty(vuln.MatchedAt))
+                                                {
+                                                    <br /><small class="text-muted"><i class="bi bi-link-45deg"></i> <a href="@vuln.MatchedAt" target="_blank" class="text-muted">@vuln.MatchedAt</a></small>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(vuln.FilePath))
+                                                {
+                                                    <code class="small">@vuln.FilePath@(vuln.LineNumber.HasValue ? $":{vuln.LineNumber}" : "")</code>
+                                                }
+                                                else { <span class="text-muted">—</span> }
+                                            </td>
                                             <td>
                                                 @if (!string.IsNullOrEmpty(vuln.CweId))
                                                 {
@@ -150,50 +194,113 @@
                                                 }
                                             </td>
                                             <td>
-                                                <button class="btn btn-sm btn-outline-primary" 
-                                                        data-bs-toggle="modal" 
+                                                <span class="badge bg-@statusClass vuln-status-badge" id="status-badge-@vuln.Id">@statusLabel</span>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#vulnModal@(vuln.Id)">
                                                     <i class="bi bi-info-circle"></i>
                                                 </button>
                                             </td>
                                         </tr>
 
-                                        <!-- Vulnerability Details Modal -->
+                                        <!-- Vulnerability Details Modal (with Validation + Remediation) -->
                                         <div class="modal fade" id="vulnModal@(vuln.Id)" tabindex="-1">
                                             <div class="modal-dialog modal-lg">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
-                                                        <h5 class="modal-title">@vuln.Title</h5>
+                                                        <h5 class="modal-title">
+                                                            <span class="badge bg-@severityClass me-2">@vuln.Severity</span>
+                                                            @vuln.Title
+                                                        </h5>
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                     </div>
                                                     <div class="modal-body">
-                                                        <p><strong>Severity:</strong> 
-                                                            <span class="badge bg-@severityClass">@vuln.Severity</span>
-                                                        </p>
-                                                        <p><strong>Description:</strong></p>
-                                                        <p>@(vuln.Description ?? "No description available.")</p>
-                                                        @if (!string.IsNullOrEmpty(vuln.FilePath))
+                                                        <!-- Description -->
+                                                        <p>@(vuln.Description ?? "Açıklama mevcut değil.")</p>
+
+                                                        <!-- Location / MatchedAt -->
+                                                        @if (!string.IsNullOrEmpty(vuln.FilePath) || !string.IsNullOrEmpty(vuln.MatchedAt))
                                                         {
-                                                            <p><strong>Location:</strong> <code>@vuln.FilePath:@vuln.LineNumber</code></p>
+                                                            <p class="mb-1">
+                                                                <strong>Konum:</strong>
+                                                                @if (!string.IsNullOrEmpty(vuln.FilePath))
+                                                                {
+                                                                    <code>@vuln.FilePath@(vuln.LineNumber.HasValue ? $":{vuln.LineNumber}" : "")</code>
+                                                                }
+                                                                @if (!string.IsNullOrEmpty(vuln.MatchedAt))
+                                                                {
+                                                                    <a href="@vuln.MatchedAt" target="_blank" class="ms-1">@vuln.MatchedAt</a>
+                                                                }
+                                                            </p>
                                                         }
+
+                                                        <!-- Identifiers -->
                                                         @if (!string.IsNullOrEmpty(vuln.CweId) || !string.IsNullOrEmpty(vuln.CveId))
                                                         {
-                                                            <p><strong>Identifiers:</strong></p>
-                                                            <ul>
-                                                                @if (!string.IsNullOrEmpty(vuln.CweId))
-                                                                {
-                                                                    <li>CWE: @vuln.CweId</li>
-                                                                }
-                                                                @if (!string.IsNullOrEmpty(vuln.CveId))
-                                                                {
-                                                                    <li>CVE: @vuln.CveId</li>
-                                                                }
-                                                            </ul>
+                                                            <p class="mb-1">
+                                                                <strong>Tanımlayıcılar:</strong>
+                                                                @if (!string.IsNullOrEmpty(vuln.CweId)) { <span class="badge bg-secondary">@vuln.CweId</span> }
+                                                                @if (!string.IsNullOrEmpty(vuln.CveId)) { <span class="badge bg-dark">@vuln.CveId</span> }
+                                                            </p>
                                                         }
-                                                        <p><strong>Detected:</strong> @vuln.DetectedAt.ToString("yyyy-MM-dd HH:mm:ss")</p>
+
+                                                        <hr />
+
+                                                        <!-- Remediation Accordion -->
+                                                        @if (!string.IsNullOrEmpty(vuln.Remediation))
+                                                        {
+                                                            <div class="accordion mb-3" id="remAccordion@(vuln.Id)">
+                                                                <div class="accordion-item border-success">
+                                                                    <h2 class="accordion-header">
+                                                                        <button class="accordion-button collapsed bg-success bg-opacity-10 text-success fw-semibold"
+                                                                                type="button"
+                                                                                data-bs-toggle="collapse"
+                                                                                data-bs-target="#remBody@(vuln.Id)">
+                                                                            <i class="bi bi-tools me-2"></i> Çözüm Önerisi
+                                                                        </button>
+                                                                    </h2>
+                                                                    <div id="remBody@(vuln.Id)" class="accordion-collapse collapse">
+                                                                        <div class="accordion-body">
+                                                                            @vuln.Remediation
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        }
+
+                                                        <!-- Validation Form -->
+                                                        <div class="card border-0 bg-light p-3" id="validationPanel@(vuln.Id)">
+                                                            <h6 class="mb-3"><i class="bi bi-clipboard2-check"></i> Doğrulama</h6>
+                                                            <div class="mb-2">
+                                                                <label class="form-label small fw-semibold">Durum</label>
+                                                                <select class="form-select form-select-sm" id="vulnStatusSel@(vuln.Id)" data-current="@vuln.ValidationStatus">
+                                                                    @{ var vs = vuln.ValidationStatus; }
+                                                                    <option value="Unreviewed">İncelenmedi</option>
+                                                                    <option value="Confirmed">Onaylandı (Gerçek Pozitif)</option>
+                                                                    <option value="FalsePositive">Yanlış Pozitif</option>
+                                                                    <option value="InProgress">İşlemde</option>
+                                                                    <option value="Resolved">Çözüldü</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <label class="form-label small fw-semibold">Notlar</label>
+                                                                <textarea class="form-control form-control-sm" id="vulnNotes@(vuln.Id)" rows="2" maxlength="1000">@vuln.ValidationNotes</textarea>
+                                                            </div>
+                                                            <button class="btn btn-sm btn-success" onclick="saveValidation(@vuln.Id)">
+                                                                <i class="bi bi-save"></i> Kaydet
+                                                            </button>
+                                                            <span class="ms-2 small text-muted" id="saveMsg@(vuln.Id)"></span>
+                                                            @if (vuln.ValidatedAt.HasValue)
+                                                            {
+                                                                <small class="d-block text-muted mt-1">Son güncelleme: @vuln.ValidatedAt.Value.ToString("dd.MM.yyyy HH:mm")</small>
+                                                            }
+                                                        </div>
                                                     </div>
                                                     <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                        <small class="text-muted me-auto">Tespit: @vuln.DetectedAt.ToString("yyyy-MM-dd HH:mm")</small>
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -265,8 +372,89 @@
                         <h3>@Model.Vulnerabilities.Count</h3>
                         <p class="text-muted">Total Vulnerabilities</p>
                     </div>
+
+                    <!-- Validation Stats -->
+                    @{
+                        var confirmedCount = Model.Vulnerabilities.Count(v => v.ValidationStatus == SecurityScanDashboard.Models.ValidationStatus.Confirmed);
+                        var fpCount = Model.Vulnerabilities.Count(v => v.ValidationStatus == SecurityScanDashboard.Models.ValidationStatus.FalsePositive);
+                        var unreviewedCount = Model.Vulnerabilities.Count(v => v.ValidationStatus == SecurityScanDashboard.Models.ValidationStatus.Unreviewed);
+                    }
+                    <hr>
+                    <p class="fw-semibold mb-2 small text-muted">DOĞRULAMA</p>
+                    <div class="d-flex flex-wrap gap-1">
+                        <span class="badge bg-light text-dark border">İncelenmedi: @unreviewedCount</span>
+                        <span class="badge bg-success">Onaylandı: @confirmedCount</span>
+                        <span class="badge bg-secondary">Yanlış Poz: @fpCount</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    // Set current validation status in each select
+    document.querySelectorAll('select[data-current]').forEach(sel => {
+        sel.value = sel.dataset.current;
+    });
+
+    async function saveValidation(vulnId) {
+        const status = document.getElementById('vulnStatusSel' + vulnId).value;
+        const notes = document.getElementById('vulnNotes' + vulnId).value;
+        const msgEl = document.getElementById('saveMsg' + vulnId);
+        msgEl.textContent = 'Kaydediliyor...';
+
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                   || document.cookie.match(/\.AspNetCore\.Antiforgery[^=]+=([^;]+)/)?.[1] || '';
+
+        try {
+            const resp = await fetch('/Scan/ValidateVulnerability', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify({ vulnerabilityId: vulnId, status, notes })
+            });
+            if (resp.ok) {
+                msgEl.textContent = '✓ Kaydedildi';
+                msgEl.className = 'ms-2 small text-success';
+                // Update badge in table
+                const badge = document.getElementById('status-badge-' + vulnId);
+                if (badge) {
+                    const labels = {Unreviewed:'İncelenmedi', Confirmed:'Onaylandı', FalsePositive:'Yanlış Poz.', InProgress:'İşlemde', Resolved:'Çözüldü'};
+                    const colors = {Unreviewed:'light text-dark border', Confirmed:'success', FalsePositive:'secondary', InProgress:'warning', Resolved:'primary'};
+                    badge.textContent = labels[status] || status;
+                    badge.className = 'badge bg-' + (colors[status] || 'light') + ' vuln-status-badge';
+                }
+                // Update row data-status
+                const row = document.querySelector(`tr[data-status="${badge?.dataset?.status || ''}"]`);
+            } else {
+                msgEl.textContent = '✗ Hata!';
+                msgEl.className = 'ms-2 small text-danger';
+            }
+        } catch {
+            msgEl.textContent = '✗ Bağlantı hatası';
+            msgEl.className = 'ms-2 small text-danger';
+        }
+    }
+
+    // Table filter
+    const filterSev = document.getElementById('filterSeverity');
+    const filterStat = document.getElementById('filterStatus');
+    function applyFilter() {
+        const sev = filterSev?.value || '';
+        const stat = filterStat?.value || '';
+        document.querySelectorAll('#vulnTable tbody tr').forEach(row => {
+            const rowSev = row.dataset.severity || '';
+            const rowStat = row.dataset.status || '';
+            const sevOk = !sev || rowSev === sev;
+            const statOk = !stat || rowStat === stat;
+            row.style.display = sevOk && statOk ? '' : 'none';
+        });
+    }
+    filterSev?.addEventListener('change', applyFilter);
+    filterStat?.addEventListener('change', applyFilter);
+</script>
+}

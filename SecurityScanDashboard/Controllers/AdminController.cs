@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SecurityScanDashboard.Data;
 using SecurityScanDashboard.Models;
+using SecurityScanDashboard.Services;
 using System.Security.Claims;
 
 namespace SecurityScanDashboard.Controllers
@@ -12,13 +13,19 @@ namespace SecurityScanDashboard.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AdminController> _logger;
+        private readonly ISettingsService _settings;
+        private readonly IEmailService _emailService;
 
         public AdminController(
             ApplicationDbContext context,
-            ILogger<AdminController> logger)
+            ILogger<AdminController> logger,
+            ISettingsService settings,
+            IEmailService emailService)
         {
             _context = context;
             _logger = logger;
+            _settings = settings;
+            _emailService = emailService;
         }
 
         // GET: Admin
@@ -117,7 +124,13 @@ namespace SecurityScanDashboard.Controllers
 
             try
             {
-                var allLines = System.IO.File.ReadAllLines(logPath).Reverse().ToList();
+                List<string> allLines;
+                using (var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var reader = new StreamReader(fs))
+                {
+                    allLines = reader.ReadToEnd().Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                        .Reverse().ToList();
+                }
                 
                 // Filter by level if specified
                 if (!string.IsNullOrEmpty(level))
@@ -145,76 +158,140 @@ namespace SecurityScanDashboard.Controllers
 
         // POST: Admin/AssignRole
         [HttpPost]
-        public async Task<IActionResult> AssignRole(int userId, int roleId)
+        public async Task<IActionResult> AssignRole(int userId, string role)
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
-            {
                 return Json(new { success = false, message = "User not found" });
-            }
 
-            var role = await _context.Roles.FindAsync(roleId);
-            if (role == null || !role.IsActive)
-            {
-                return Json(new { success = false, message = "Role not found or inactive" });
-            }
+            var roleEntity = await _context.Roles.FirstOrDefaultAsync(r => r.Name == role && r.IsActive);
+            if (roleEntity == null)
+                return Json(new { success = false, message = $"Role '{role}' not found or inactive" });
 
-            var existingUserRole = await _context.UserRoles
-                .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+            var existing = await _context.UserRoles
+                .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleEntity.Id);
+            if (existing != null)
+                return Json(new { success = false, message = $"User already has {role} role" });
 
-            if (existingUserRole != null)
-            {
-                return Json(new { success = false, message = $"User already has {role.Name} role" });
-            }
-
-            var userRole = new UserRole
+            _context.UserRoles.Add(new UserRole
             {
                 UserId = userId,
-                RoleId = roleId,
+                RoleId = roleEntity.Id,
                 CreateDate = DateTime.UtcNow,
                 OperationUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0")
-            };
-
-            _context.UserRoles.Add(userRole);
+            });
             await _context.SaveChangesAsync();
-
-            _logger.LogInformation("Admin {AdminId} assigned {Role} role to user {UserId}", 
-                User.FindFirstValue(ClaimTypes.NameIdentifier), role.Name, userId);
-            
-            return Json(new { success = true, message = $"Successfully assigned {role.Name} role to {user.Username}" });
+            _logger.LogInformation("Admin {AdminId} assigned {Role} to user {UserId}",
+                User.FindFirstValue(ClaimTypes.NameIdentifier), role, userId);
+            return Json(new { success = true, message = $"'{role}' rolü {user.Username} kullanıcısına atandı" });
         }
 
         // POST: Admin/RemoveRole
         [HttpPost]
-        public async Task<IActionResult> RemoveRole(int userId, int roleId)
+        public async Task<IActionResult> RemoveRole(int userId, string role)
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
-            {
                 return Json(new { success = false, message = "User not found" });
-            }
 
-            var role = await _context.Roles.FindAsync(roleId);
-            if (role == null)
-            {
-                return Json(new { success = false, message = "Role not found" });
-            }
+            var roleEntity = await _context.Roles.FirstOrDefaultAsync(r => r.Name == role);
+            if (roleEntity == null)
+                return Json(new { success = false, message = $"Role '{role}' not found" });
 
             var userRole = await _context.UserRoles
-                .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
-
+                .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleEntity.Id);
             if (userRole == null)
-            {
-                return Json(new { success = false, message = $"User does not have {role.Name} role" });
-            }
+                return Json(new { success = false, message = $"User does not have {role} role" });
 
             _context.UserRoles.Remove(userRole);
             await _context.SaveChangesAsync();
+            _logger.LogInformation("Admin {AdminId} removed {Role} from user {UserId}",
+                User.FindFirstValue(ClaimTypes.NameIdentifier), role, userId);
+            return Json(new { success = true, message = $"'{role}' rolü {user.Username} kullanıcısından kaldırıldı" });
+        }
 
-            _logger.LogInformation("Admin {AdminId} removed {Role} role from user {UserId}", 
-                User.FindFirstValue(ClaimTypes.NameIdentifier), role.Name, userId);
-            
-            return Json(new { success = true, message = $"Successfully removed {role.Name} role from {user.Username}" });
+        // POST: Admin/DeleteUser  (sadece Admin rolü — controller seviyesinde korunuyor)
+        [HttpPost]
+        public async Task<IActionResult> DeleteUser(int id)
+        {
+            var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
+            if (id == currentUserId)
+                return Json(new { success = false, message = "Kendi hesabınızı silemezsiniz." });
+
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null)
+                return Json(new { success = false, message = "Kullanıcı bulunamadı." });
+
+            var username = user.Username;
+            try
+            {
+                // 1) ValidatedBy referanslarını temizle
+                await _context.Database.ExecuteSqlInterpolatedAsync(
+                    $"UPDATE belek_appsec.\"Vulnerabilities\" SET \"ValidatedBy\" = NULL WHERE \"ValidatedBy\" = {id}");
+
+                // 2) repo → scan → vulnerability (EF)
+                var repos = await _context.Repositories
+                    .Include(r => r.Scans).ThenInclude(s => s.Vulnerabilities)
+                    .Where(r => r.OwnerId == id).ToListAsync();
+                foreach (var repo in repos)
+                {
+                    foreach (var scan in repo.Scans)
+                        _context.Vulnerabilities.RemoveRange(scan.Vulnerabilities);
+                    _context.Scans.RemoveRange(repo.Scans);
+                }
+                _context.Repositories.RemoveRange(repos);
+                await _context.SaveChangesAsync();
+
+                // 3) Projects (FK: OwnerId → users.id, Restrict)
+                var projects = await _context.Projects.Where(p => p.OwnerId == id).ToListAsync();
+                _context.Projects.RemoveRange(projects);
+                await _context.SaveChangesAsync();
+
+                // 4) public.user_roles
+                await _context.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM public.user_roles WHERE user_id = {id}");
+
+                // 5) public.users
+                int deleted = await _context.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM public.users WHERE id = {id}");
+
+                if (deleted == 0)
+                    return Json(new { success = false, message = "Kullanıcı silinemedi. Veritabanı yetki ayarlarını kontrol edin (RLS politikası)." });
+
+                _logger.LogInformation("Admin {AdminId} kullanıcıyı sildi: {UserId} ({Username})", currentUserId, id, username);
+                return Json(new { success = true, message = $"{username} kullanıcısı silindi." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteUser hatası: userId={UserId}", id);
+                return Json(new { success = false, message = "Silme hatası: " + ex.Message });
+            }
+        }
+
+        // POST: Admin/DeleteScan
+        [HttpPost]
+        public async Task<IActionResult> DeleteScan(int id)
+        {
+            var scan = await _context.Scans
+                .Include(s => s.Vulnerabilities)
+                .FirstOrDefaultAsync(s => s.Id == id);
+            if (scan == null)
+                return Json(new { success = false, message = "Tarama bulunamadı." });
+
+            try
+            {
+                _context.Vulnerabilities.RemoveRange(scan.Vulnerabilities);
+                _context.Scans.Remove(scan);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Admin {AdminId} deleted scan {ScanId}",
+                    User.FindFirstValue(ClaimTypes.NameIdentifier), id);
+                return Json(new { success = true, message = $"Tarama #{id} silindi." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting scan {ScanId}", id);
+                return Json(new { success = false, message = "Silme hatası: " + ex.Message });
+            }
         }
 
         // POST: Admin/DeleteRepository
@@ -260,39 +337,88 @@ namespace SecurityScanDashboard.Controllers
         }
 
         // GET: Admin/Settings
-        public IActionResult Settings()
+        public async Task<IActionResult> Settings()
         {
-            return View();
+            var allSettings = await _settings.GetAllAsync();
+
+            // Provide defaults for keys that haven't been saved yet
+            var defaults = new Dictionary<string, string>
+            {
+                ["Email:SmtpHost"]              = "smtp.gmail.com",
+                ["Email:SmtpPort"]              = "587",
+                ["Email:SmtpUsername"]          = "",
+                ["Email:SmtpPassword"]          = "",
+                ["Email:FromEmail"]             = "noreply@securityscan.com",
+                ["Email:EnableSsl"]             = "true",
+                ["Email:SendOnComplete"]        = "true",
+                ["Scan:MaxConcurrent"]          = "2",
+                ["Scan:TimeoutMinutes"]         = "30",
+                ["Scan:AutoSchedule"]           = "none",
+                ["App:LogRetentionDays"]        = "30",
+                ["App:ItemsPerPage"]            = "10",
+            };
+
+            foreach (var kv in defaults)
+                allSettings.TryAdd(kv.Key, kv.Value);
+
+            return View(allSettings);
         }
 
         // POST: Admin/UpdateSettings
         [HttpPost]
-        public async Task<IActionResult> UpdateSettings(string key, string value)
+        public async Task<IActionResult> UpdateSettings([FromBody] Dictionary<string, string> settings)
         {
-            // This is a placeholder for settings management
-            // In a real application, you would store settings in database or configuration
-            _logger.LogInformation("Admin {AdminId} updated setting {Key} to {Value}", 
-                User.FindFirstValue(ClaimTypes.NameIdentifier), key, value);
+            if (settings == null || settings.Count == 0)
+                return Json(new { success = false, message = "No settings provided" });
 
-            return Json(new { success = true, message = "Settings updated successfully" });
+            try
+            {
+                await _settings.SetBulkAsync(settings);
+                _logger.LogInformation("Admin {AdminId} updated settings: {Keys}",
+                    User.FindFirstValue(ClaimTypes.NameIdentifier), string.Join(", ", settings.Keys));
+                return Json(new { success = true, message = "Settings saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving settings");
+                return Json(new { success = false, message = "Failed to save settings: " + ex.Message });
+            }
         }
+
+        // POST: Admin/SendTestEmail
+        [HttpPost]
+        public async Task<IActionResult> SendTestEmail([FromBody] SendTestEmailRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request?.Email))
+                return Json(new { success = false, message = "Email address is required" });
+            try
+            {
+                await _emailService.SendTestEmailAsync(request.Email);
+                return Json(new { success = true, message = $"Test email sent to {request.Email}" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Test email failed");
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        public class SendTestEmailRequest { public string Email { get; set; } = ""; }
 
         // GET: Admin/SystemInfo
         public IActionResult SystemInfo()
         {
-            var info = new
-            {
-                MachineName = Environment.MachineName,
-                OSVersion = Environment.OSVersion.ToString(),
-                ProcessorCount = Environment.ProcessorCount,
-                DotNetVersion = Environment.Version.ToString(),
-                WorkingSet = Environment.WorkingSet / 1024 / 1024, // MB
-                SystemDirectory = Environment.SystemDirectory,
-                CurrentDirectory = Environment.CurrentDirectory,
-                UpTime = TimeSpan.FromMilliseconds(Environment.TickCount64)
-            };
+            ViewBag.MachineName = Environment.MachineName;
+            ViewBag.OSVersion = Environment.OSVersion.ToString();
+            ViewBag.ProcessorCount = Environment.ProcessorCount;
+            ViewBag.DotNetVersion = Environment.Version.ToString();
+            ViewBag.WorkingSet = Environment.WorkingSet / 1024 / 1024; // MB
+            ViewBag.GCMemory = GC.GetTotalMemory(false) / 1024 / 1024;
+            ViewBag.SystemDirectory = Environment.SystemDirectory;
+            ViewBag.CurrentDirectory = Environment.CurrentDirectory;
+            ViewBag.UpTime = TimeSpan.FromMilliseconds(Environment.TickCount64);
 
-            return View(info);
+            return View();
         }
     }
 }

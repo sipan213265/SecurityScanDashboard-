@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using SecurityScanDashboard.Attributes;
 
 namespace SecurityScanDashboard.Models
@@ -30,10 +31,24 @@ namespace SecurityScanDashboard.Models
         [Required]
         public int OwnerId { get; set; }
 
+        // Optional project grouping
+        public int? ProjectId { get; set; }
+
+        [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("created_by")]
+        public int? CreatedBy { get; set; }
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
+
+        [Column("updated_by")]
+        public int? UpdatedBy { get; set; }
 
         // Navigation properties
         public User? RepositoryOwner { get; set; }
+        public Project? Project { get; set; }
         public ICollection<Scan> Scans { get; set; } = new List<Scan>();
     }
 }

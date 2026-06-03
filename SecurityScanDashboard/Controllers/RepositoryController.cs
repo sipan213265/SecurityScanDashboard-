@@ -90,8 +90,8 @@ namespace SecurityScanDashboard.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Check ownership
-            if (repository.OwnerId != userId)
+            // Check ownership — Admin can view all repositories
+            if (repository.OwnerId != userId && !User.IsInRole("Admin"))
             {
                 TempData["ErrorMessage"] = "You don't have permission to view this repository.";
                 return RedirectToAction(nameof(Index));
@@ -114,8 +114,8 @@ namespace SecurityScanDashboard.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Check ownership
-            if (repository.OwnerId != userId)
+            // Check ownership — Admin can delete all repositories
+            if (repository.OwnerId != userId && !User.IsInRole("Admin"))
             {
                 TempData["ErrorMessage"] = "You don't have permission to delete this repository.";
                 return RedirectToAction(nameof(Index));

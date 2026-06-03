@@ -1,0 +1,26 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=YOUR_DB_HOST;Port=5432;Database=YOUR_DB_NAME;Username=YOUR_DB_USER;Password=YOUR_DB_PASSWORD;SSL Mode=Require;Trust Server Certificate=true;Maximum Pool Size=150;Minimum Pool Size=10;Timeout=60;Command Timeout=60;Pooling=true;Connection Idle Lifetime=300;Connection Pruning Interval=10",
+    "HangfireConnection": "Host=YOUR_DB_HOST;Port=5432;Database=YOUR_HANGFIRE_DB;Username=YOUR_DB_USER;Password=YOUR_DB_PASSWORD;SSL Mode=Require;Trust Server Certificate=true;Maximum Pool Size=50;Minimum Pool Size=5;Timeout=60;Command Timeout=60;Pooling=true;Connection Idle Lifetime=300;Connection Pruning Interval=10"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Hangfire": "Information"
+    }
+  },
+  "AllowedHosts": "*",
+  "SecurityTools": {
+    "Nuclei": {
+      "Enabled": true
+    },
+    "Semgrep": {
+      "Enabled": true
+    }
+  },
+  "HangfireOptions": {
+    "WorkerCount": 1,
+    "JobTimeout": 30
+  }
+}

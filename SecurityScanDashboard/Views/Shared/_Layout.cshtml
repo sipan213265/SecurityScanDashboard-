@@ -32,6 +32,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Project" asp-action="Index">
+                                <i class="bi bi-folder2-open"></i> Projeler
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Repository" asp-action="Index">
                                 <i class="bi bi-github"></i> Repositories
                             </a>
@@ -43,10 +48,20 @@
                         </li>
                         @if (User.IsInRole("Admin"))
                         {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-shield-lock"></i> Admin
                                 </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="Users"><i class="bi bi-people me-2"></i>Kullanıcılar</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="AllRepositories"><i class="bi bi-github me-2"></i>Tüm Repolar</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="AllScans"><i class="bi bi-shield-check me-2"></i>Tüm Taramalar</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="Settings"><i class="bi bi-gear me-2"></i>Ayarlar</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="Logs"><i class="bi bi-file-text me-2"></i>Loglar</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Admin" asp-action="SystemInfo"><i class="bi bi-info-circle me-2"></i>Sistem Bilgisi</a></li>
+                                </ul>
                             </li>
                         }
                         <li class="nav-item">

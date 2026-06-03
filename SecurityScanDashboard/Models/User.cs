@@ -37,6 +37,9 @@ namespace SecurityScanDashboard.Models
         [Column("user_type")]
         public string? UserType { get; set; }
 
+        [Column("is_active")]
+        public bool IsActive { get; set; } = true;
+
         [Column("created_by")]
         public int? CreatedBy { get; set; }
 
@@ -56,10 +59,10 @@ namespace SecurityScanDashboard.Models
         [Column("email_verified_at")]
         public DateTime? EmailVerifiedAt { get; set; }
 
-        [Column("password_reset_token")]
+        [NotMapped]
         public string? PasswordResetToken { get; set; }
 
-        [Column("password_reset_expires")]
+        [NotMapped]
         public DateTime? PasswordResetExpires { get; set; }
 
         [MaxLength(10)]

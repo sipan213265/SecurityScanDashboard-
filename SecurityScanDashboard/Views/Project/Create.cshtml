@@ -1,0 +1,48 @@
+@model SecurityScanDashboard.Models.Project
+
+@{
+    ViewData["Title"] = "Yeni Proje";
+}
+
+<div class="container mt-4" style="max-width:600px">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Projelerim</a></li>
+            <li class="breadcrumb-item active">Yeni Proje</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <i class="bi bi-folder-plus"></i> Yeni Proje Oluştur
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger d-none"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Name" class="form-label">Proje Adı *</label>
+                    <input asp-for="Name" class="form-control" placeholder="Örn: E-ticaret Backend Güvenlik Taraması" maxlength="200" required />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label">Açıklama</label>
+                    <textarea asp-for="Description" class="form-control" rows="3" maxlength="1000"
+                              placeholder="Bu proje hakkında kısa açıklama (isteğe bağlı)"></textarea>
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Oluştur
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts { @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); } }

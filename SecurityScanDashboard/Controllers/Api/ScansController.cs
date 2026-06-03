@@ -165,13 +165,13 @@ namespace SecurityScanDashboard.Controllers.Api
                 BackgroundJob.Enqueue<ScanJob>(job => job.ExecuteDastScanAsync(scan.Id));
             }
 
-            _logger.LogInformation($"Scan started via API: Type={scanType}, Tool={request.Tool}, Repository={repository.Name}");
+            _logger.LogInformation($"Scan started via API: Type={scanType}, Tool={request.Tool}, Repository={repository?.Name}");
 
             var dto = new ScanDto
             {
                 Id = scan.Id,
                 RepositoryId = scan.RepositoryId,
-                RepositoryName = repository.Name,
+                RepositoryName = repository?.Name,
                 Type = scan.Type.ToString(),
                 ToolName = scan.ToolName,
                 Status = scan.Status.ToString(),
